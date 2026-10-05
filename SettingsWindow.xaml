@@ -1,0 +1,56 @@
+<Window x:Class="ScreenLingo.SettingsWindow" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Title="ScreenLingo · Settings" Width="466" Height="700"
+        ResizeMode="NoResize" WindowStartupLocation="CenterOwner" Style="{StaticResource {x:Type Window}}">
+  <Grid Margin="24"><Grid.RowDefinitions><RowDefinition /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+    <ScrollViewer x:Name="SettingsScroll" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" AutomationProperties.AutomationId="settings-scroll"><StackPanel Margin="0,0,10,0">
+      <TextBlock Text="Settings" FontSize="24" FontWeight="SemiBold" Margin="0,0,0,20" />
+      <TextBlock Text="Appearance" FontWeight="SemiBold" Margin="0,0,0,9" />
+      <ComboBox x:Name="Skin" SelectedValuePath="Tag" AutomationProperties.AutomationId="color-skin" AutomationProperties.Name="Color skin">
+        <ComboBoxItem Content="Copper · warm charcoal" Tag="Copper" />
+        <ComboBoxItem Content="Paper · light cream" Tag="Paper" />
+        <ComboBoxItem Content="Plum · dark violet" Tag="Plum" />
+      </ComboBox>
+      <TextBlock Text="Applies to the controls and translation overlay when you save. Windows high contrast takes precedence."
+                 Style="{StaticResource Caption}" Margin="0,8,0,23" />
+      <TextBlock Text="Translation service" Margin="0,0,0,7" />
+      <ComboBox x:Name="Provider" SelectedValuePath="Tag" SelectionChanged="ProviderChanged" AutomationProperties.AutomationId="translation-service" AutomationProperties.Name="Translation service">
+        <ComboBoxItem Content="Online · MyMemory" Tag="MyMemory" /><ComboBoxItem Content="Offline · Ollama" Tag="Ollama" />
+      </ComboBox>
+      <TextBlock x:Name="ProviderHelp" Style="{StaticResource Caption}" Margin="0,9,0,12" />
+      <StackPanel x:Name="LocalModelSettings" Visibility="Collapsed">
+        <TextBlock Text="Installed local model" Margin="0,0,0,7" /><TextBox x:Name="LocalModel" AutomationProperties.AutomationId="local-model" AutomationProperties.Name="Installed Ollama model name" />
+        <TextBlock Text="Install Ollama and download a multilingual model first. ScreenLingo connects only to 127.0.0.1:11434."
+                   Style="{StaticResource Caption}" Margin="0,7,0,10" />
+        <Button Content="Open Ollama setup" Click="OpenOllamaClicked" HorizontalAlignment="Left" Margin="0,0,0,18" />
+      </StackPanel>
+      <TextBlock Text="What to capture" Margin="0,0,0,7" />
+      <ComboBox x:Name="Scope" SelectedValuePath="Tag" AutomationProperties.AutomationId="capture-scope" AutomationProperties.Name="Capture scope">
+        <ComboBoxItem Content="Active window · follows your clicks" Tag="ActiveWindow" />
+        <ComboBoxItem Content="Window under pointer · follows your mouse" Tag="WindowUnderPointer" />
+        <ComboBoxItem Content="Entire monitor under pointer" Tag="MonitorUnderPointer" />
+      </ComboBox>
+      <TextBlock Text="Refresh interval" Margin="0,18,0,7" />
+      <ComboBox x:Name="Interval" SelectedValuePath="Tag" AutomationProperties.Name="Screen refresh interval">
+        <ComboBoxItem Content="Fast · every 0.5 seconds" Tag="500" /><ComboBoxItem Content="Balanced · every 0.75 seconds" Tag="750" />
+        <ComboBoxItem Content="Light · every 1.5 seconds" Tag="1500" />
+      </ComboBox>
+      <TextBlock Text="Accessibility" FontWeight="SemiBold" Margin="0,24,0,9" />
+      <Grid><TextBlock Text="Translation text size" Style="{StaticResource Caption}" />
+        <TextBlock Text="{Binding ElementName=TextSize, Path=Value, StringFormat={}{0:0} px}" Style="{StaticResource Caption}" HorizontalAlignment="Right" /></Grid>
+      <Slider x:Name="TextSize" Minimum="12" Maximum="32" TickFrequency="1" IsSnapToTickEnabled="True" Margin="0,6,0,10" AutomationProperties.AutomationId="translation-text-size" AutomationProperties.Name="Translation text size" />
+      <Grid><TextBlock Text="Translation background opacity" Style="{StaticResource Caption}" />
+        <TextBlock Text="{Binding ElementName=BackgroundOpacity, Path=Value, StringFormat={}{0:P0}}" Style="{StaticResource Caption}" HorizontalAlignment="Right" /></Grid>
+      <Slider x:Name="BackgroundOpacity" Minimum="0.5" Maximum="1" TickFrequency="0.05" IsSnapToTickEnabled="True" Margin="0,6,0,10" AutomationProperties.AutomationId="translation-opacity" AutomationProperties.Name="Translation background opacity" />
+      <CheckBox x:Name="ReducedMotion" Content="Reduce motion" AutomationProperties.AutomationId="reduce-motion" AutomationProperties.Name="Reduce motion" />
+      <TextBlock Text="Keyboard navigation and Windows high contrast are supported. Translation overlays let mouse clicks pass through."
+                 Style="{StaticResource Caption}" Margin="0,3,0,20" />
+      <Button x:Name="CheckUpdates" Content="Check for updates" Click="CheckUpdatesClicked" AutomationProperties.AutomationId="check-updates" />
+      <TextBlock x:Name="UpdateStatus" Text="Updates are checked when ScreenLingo starts. Downloads and installation are your choice."
+                 Style="{StaticResource Caption}" Margin="0,8,0,0" AutomationProperties.LiveSetting="Polite" />
+    </StackPanel></ScrollViewer>
+    <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,20,0,0">
+      <Button Content="Cancel" IsCancel="True" Margin="0,0,9,0" /><Button x:Name="SaveChanges" Content="Save changes" IsDefault="True" Click="SaveClicked"
+        Background="{DynamicResource Accent}" Foreground="{DynamicResource AccentInk}" AutomationProperties.AutomationId="save-settings" />
+    </StackPanel>
+  </Grid>
+</Window>

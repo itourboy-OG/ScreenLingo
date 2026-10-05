@@ -1,0 +1,48 @@
+{
+  "version": 1,
+  "dependencies": {
+    "net9.0-windows10.0.19041": {
+      "SearchPioneer.Lingua": {
+        "type": "Direct",
+        "requested": "[2.0.0, )",
+        "resolved": "2.0.0",
+        "contentHash": "5iGhFK2k7S6x2wieUz6EoovqgTFyaKw4imM4rc8e5XSJxYkrFHwPROClUk6azZbX4MhKB7AhFoZCEVvL8AIOpw=="
+      },
+      "TesseractOCR": {
+        "type": "Direct",
+        "requested": "[5.5.2, )",
+        "resolved": "5.5.2",
+        "contentHash": "m/B0uXLq7JvXfsn+KJtB8iiBJaySEUH13P3x0q9hvnXZ5QnN4+9KcFQaLFE5hwVZD1zGOy2KLxN4B9A1HxvtPQ==",
+        "dependencies": {
+          "Microsoft.Extensions.Logging.Abstractions": "10.0.3",
+          "System.Reflection.Emit": "4.7.0"
+        }
+      },
+      "Microsoft.Extensions.DependencyInjection.Abstractions": {
+        "type": "Transitive",
+        "resolved": "10.0.3",
+        "contentHash": "bwGMrRcAMWx2s/RDgja97p27rxSz2pEQW0+rX5cWAUWVETVJ/eyxGfjAl8vuG5a+lckWmPIE+vcuaZNVB5YDdw=="
+      },
+      "Microsoft.Extensions.Logging.Abstractions": {
+        "type": "Transitive",
+        "resolved": "10.0.3",
+        "contentHash": "lxl0WLk7ROgBFAsjcOYjQ8/DVK+VMszxGBzUhgtQmAsTNldLL5pk9NG/cWTsXHq0lUhUEAtZkEE7jOGOA8bGKQ==",
+        "dependencies": {
+          "Microsoft.Extensions.DependencyInjection.Abstractions": "10.0.3",
+          "System.Diagnostics.DiagnosticSource": "10.0.3"
+        }
+      },
+      "System.Diagnostics.DiagnosticSource": {
+        "type": "Transitive",
+        "resolved": "10.0.3",
+        "contentHash": "IuZXyF3K5X+mCsBKIQ87Cn/V4Nyb39vyCbzfH/AkoneSWNV/ExGQ/I0m4CEaVAeFh9fW6kp2NVObkmevd1Ys7A=="
+      },
+      "System.Reflection.Emit": {
+        "type": "Transitive",
+        "resolved": "4.7.0",
+        "contentHash": "VR4kk8XLKebQ4MZuKuIni/7oh+QGFmZW3qORd1GvBq/8026OpW501SzT/oypwiQl4TvT8ErnReh/NzY9u+C6wQ=="
+      }
+    },
+    "net9.0-windows10.0.19041/win-x64": {}
+  }
+}
