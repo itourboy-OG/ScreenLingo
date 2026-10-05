@@ -11,8 +11,12 @@
       </Grid>
       <Border x:Name="UpdateBanner" Visibility="Collapsed" Background="{DynamicResource Card}" BorderBrush="{DynamicResource Accent}"
               BorderThickness="1" CornerRadius="12" Padding="12" Margin="0,0,0,18" AutomationProperties.AutomationId="update-banner">
-        <StackPanel>
-          <TextBlock x:Name="UpdateTitle" FontWeight="SemiBold" TextWrapping="Wrap" />
+        <StackPanel x:Name="UpdateContent">
+          <StackPanel Orientation="Horizontal">
+            <ContentControl x:Name="UpdateSpinner" Style="{StaticResource UpdateActivity}" Margin="0,0,8,0" Visibility="Collapsed" AutomationProperties.AutomationId="update-spinner" AutomationProperties.Name="Checking for updates" />
+            <TextBlock x:Name="UpdateComplete" Text="✓" Foreground="{DynamicResource Accent}" FontWeight="Bold" Margin="0,0,8,0" Visibility="Collapsed" AutomationProperties.AutomationId="update-complete" />
+            <TextBlock x:Name="UpdateTitle" FontWeight="SemiBold" TextWrapping="Wrap" />
+          </StackPanel>
           <TextBlock x:Name="UpdateDetail" Style="{StaticResource Caption}" Margin="0,5,0,9" AutomationProperties.LiveSetting="Polite" />
           <ProgressBar x:Name="UpdateProgress" Minimum="0" Maximum="100" Height="6" Visibility="Collapsed" Margin="0,0,0,10" AutomationProperties.AutomationId="update-progress" />
           <WrapPanel>
@@ -47,8 +51,22 @@
       <TextBlock x:Name="VersionCaption" Style="{StaticResource Caption}" VerticalAlignment="Center" />
       <Button x:Name="AboutButton" Grid.Column="1" Content="About" Click="AboutClicked" Margin="0,0,8,0" AutomationProperties.AutomationId="about" />
       <Button x:Name="SettingsButton" Grid.Column="2" Content="Settings" Click="SettingsClicked" AutomationProperties.AutomationId="settings" />
-    </Grid>
   </Grid>
+  </Grid>
+    <Border x:Name="Notice" Visibility="Collapsed" Panel.ZIndex="10" Background="{DynamicResource Backdrop}" CornerRadius="14" Padding="16" BorderBrush="{DynamicResource Accent}" BorderThickness="1" AutomationProperties.AutomationId="app-notice">
+      <Grid><Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+        <TextBlock x:Name="NoticeTitle" FontSize="22" FontWeight="SemiBold" TextWrapping="Wrap" Margin="0,0,0,18" />
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto"><StackPanel>
+          <TextBlock x:Name="NoticeMessage" TextWrapping="Wrap" />
+          <Button x:Name="DetailsToggle" Content="Show technical details" Click="DetailsClicked" Margin="0,18,0,9" HorizontalAlignment="Left" AutomationProperties.AutomationId="error-details" />
+          <TextBox x:Name="NoticeDetails" Visibility="Collapsed" IsReadOnly="True" TextWrapping="Wrap" BorderThickness="0" AutomationProperties.AutomationId="error-text" />
+        </StackPanel></ScrollViewer>
+        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,16,0,0">
+          <Button Content="Copy details" Click="CopyErrorClicked" Margin="0,0,8,0" AutomationProperties.AutomationId="copy-error" />
+          <Button x:Name="DismissNotice" Content="Back" Click="DismissNoticeClicked" AutomationProperties.AutomationId="dismiss-notice" />
+        </StackPanel>
+      </Grid>
+    </Border>
     <ContentControl x:Name="DetailView" Visibility="Collapsed" AutomationProperties.AutomationId="settings-page" />
     <Grid x:Name="AboutView" Visibility="Collapsed" AutomationProperties.AutomationId="about-page">
       <Grid.RowDefinitions><RowDefinition /><RowDefinition Height="Auto" /></Grid.RowDefinitions>

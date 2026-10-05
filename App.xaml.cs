@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Windows;
+using System.Windows.Controls;
 
 namespace ScreenLingo;
 
@@ -12,11 +13,33 @@ public partial class App : Application
     {
         DispatcherUnhandledException += (_, eventArgs) =>
         {
-            MessageBox.Show(eventArgs.Exception.ToString(), "ScreenLingo · Application error", MessageBoxButton.OK, MessageBoxImage.Error);
             eventArgs.Handled = true;
-            Shutdown(1);
+            if (MainWindow is ScreenLingo.MainWindow panel && panel.IsLoaded)
+            {
+                panel.ShowFatalError(eventArgs.Exception);
+                return;
+            }
+            StackPanel content = new() { Margin = new Thickness(24) };
+            content.Children.Add(new TextBlock { Text = "ScreenLingo could not start", FontSize = 22, Margin = new Thickness(0, 0, 0, 18) });
+            content.Children.Add(new TextBox { Text = eventArgs.Exception.ToString(), IsReadOnly = true, TextWrapping = TextWrapping.Wrap, MaxHeight = 330 });
+            Button close = new() { Content = "Close ScreenLingo", Margin = new Thickness(0, 16, 0, 0) };
+            close.Click += (_, _) => Shutdown(1);
+            content.Children.Add(close);
+            Window errorWindow = MainWindow ?? new Window { Title = ApplicationIdentity.Name, Width = 580, Height = 510, WindowStartupLocation = WindowStartupLocation.CenterScreen };
+            errorWindow.Content = content;
+            MainWindow = errorWindow;
+            errorWindow.Closed += (_, _) => Shutdown(1);
+            errorWindow.Show();
         };
         ThemeConnector.Apply(ColorSkin.Copper);
+        MotionConnector.ApplyPreferences(false);
+        if (args.Args.Contains("--motion-check", StringComparer.Ordinal))
+        {
+            ShutdownMode = ShutdownMode.OnExplicitShutdown;
+            if (args.Args.Length != 2) throw new ArgumentException("Usage: ScreenLingo.exe --motion-check <report-directory>");
+            Shutdown(await SmokeCheck.RunMotionAsync(Path.GetFullPath(args.Args[1])));
+            return;
+        }
         if (args.Args.Contains("--capture-check", StringComparer.Ordinal))
         {
             ShutdownMode = ShutdownMode.OnExplicitShutdown;

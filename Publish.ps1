@@ -1,9 +1,9 @@
 <#
 .SYNOPSIS
-Builds the current ScreenLingo version and refreshes Desktop\ScreenLingo.
+Builds and checks the current ScreenLingo version in a separate package directory.
 .DESCRIPTION
 PackageDirectory must be an explicit output directory outside this source folder.
-Close the Desktop copy before publishing. Supporting files stay beside the EXE.
+Existing Desktop and installed application copies are not replaced. Installation is left to the user.
 #>
 param(
     [Parameter(Mandatory = $true)]
@@ -23,12 +23,6 @@ if ($packagePath.Equals($sourceDirectory, [StringComparison]::OrdinalIgnoreCase)
     $desktopAppPath.StartsWith($packagePath.TrimEnd([IO.Path]::DirectorySeparatorChar) + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)) {
     throw 'Choose a package output directory outside the source folder and separate from Desktop\ScreenLingo.'
 }
-$runningApps = @(Get-Process -Name 'ScreenLingo','ScreenLingo' -ErrorAction SilentlyContinue)
-foreach ($runningApp in $runningApps) {
-    if ($runningApp.Path -and $runningApp.Path.StartsWith($desktopAppPath + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)) {
-        throw 'Close ScreenLingo before updating Desktop\ScreenLingo, then run Publish.ps1 again.'
-    }
-}
 $projectPath = Join-Path $sourceDirectory 'ScreenLingo.csproj'
 New-Item -ItemType Directory -Path $packagePath -Force | Out-Null
 & powershell.exe -NoProfile -STA -ExecutionPolicy Bypass -File (Join-Path $sourceDirectory 'Build-Icon.ps1') -SourceDirectory $sourceDirectory -LogoPath (Join-Path ([IO.Path]::GetDirectoryName($packagePath)) 'ScreenLingo-logo.png')
@@ -42,12 +36,4 @@ if (-not (Test-Path -LiteralPath $executablePath -PathType Leaf)) { throw "The p
 $checkDirectory = Join-Path ([IO.Path]::GetDirectoryName($packagePath)) 'screen-lingo-appearance-check'
 $checkProcess = Start-Process -FilePath $executablePath -ArgumentList @('--appearance-check', ('"' + $checkDirectory + '"')) -WindowStyle Hidden -PassThru -Wait
 if ($checkProcess.ExitCode -ne 0) { throw "Appearance check failed with exit code $($checkProcess.ExitCode). Read $checkDirectory\appearance-report.json. Desktop copy was not updated." }
-New-Item -ItemType Directory -Path $desktopAppPath -Force | Out-Null
-foreach ($item in Get-ChildItem -LiteralPath $packagePath) {
-    Copy-Item -LiteralPath $item.FullName -Destination $desktopAppPath -Recurse -Force
-}
-$copiedExecutable = Join-Path $desktopAppPath 'ScreenLingo.exe'
-if ((Get-FileHash -LiteralPath $executablePath -Algorithm SHA256).Hash -ne (Get-FileHash -LiteralPath $copiedExecutable -Algorithm SHA256).Hash) {
-    throw "Desktop EXE verification failed: $copiedExecutable"
-}
-Write-Output "ScreenLingo is ready: $copiedExecutable"
+Write-Output "ScreenLingo package is ready for manual installation: $executablePath"

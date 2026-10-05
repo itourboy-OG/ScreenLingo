@@ -13,7 +13,9 @@ namespace ScreenLingo;
 
 public partial class MainWindow
 {
-    private ScreenshotWindow? screenshotWindow;
+    private ScreenshotView? screenshotView;
+    private Rect panelBounds;
+    internal ScreenshotView? CurrentScreenshot => screenshotView;
     private bool countingDown;
 
     private void ModeChanged(object sender, SelectionChangedEventArgs args)
@@ -84,15 +86,8 @@ public partial class MainWindow
                 ? CaptureConnector.ForWindow(target) : CaptureConnector.ForMonitor(target);
             CapturedImage image = await screenshotCapture.SnapshotAsync(token);
             token.ThrowIfCancellationRequested();
-            ScreenshotWindow viewer = new(image, target.Title);
-            screenshotWindow = viewer;
-            viewer.Closed += (_, _) =>
-            {
-                if (screenshotWindow != viewer) return;
-                screenshotWindow = null;
-                InvalidateCapture();
-            };
-            viewer.Show();
+            ScreenshotView viewer = new(image, target.Title);
+            OpenScreenshot(viewer);
             ScreenTranslation result = await TranslateImageAsync(image, snapshot, token, detail =>
             {
                 viewer.SetProgress(detail);
@@ -107,9 +102,8 @@ public partial class MainWindow
         {
             if (generation != startedGeneration) return;
             SetStatus("Screenshot translation stopped", error.Message);
-            screenshotWindow?.SetError(error.Message);
-            MessageBox.Show(screenshotWindow is Window viewer ? viewer : this, error.ToString(),
-                "ScreenLingo · Screenshot error", MessageBoxButton.OK, MessageBoxImage.Error);
+            screenshotView?.SetError(error.Message);
+            ShowError("Screenshot translation stopped", error);
         }
         finally
         {
@@ -119,10 +113,36 @@ public partial class MainWindow
         }
     }
 
+    internal void OpenScreenshot(ScreenshotView viewer)
+    {
+        CloseScreenshot();
+        panelBounds = new Rect(Left, Top, Width, Height);
+        screenshotView = viewer;
+        viewer.CloseRequested += CloseScreenshot;
+        HomeView.Visibility = Visibility.Collapsed;
+        AboutView.Visibility = Visibility.Collapsed;
+        DetailView.Content = viewer;
+        ResizeMode = ResizeMode.CanResize;
+        MinWidth = 740;
+        Width = Math.Min(1060, SystemParameters.WorkArea.Width);
+        Height = Math.Min(760, SystemParameters.WorkArea.Height);
+        Left = Math.Clamp(panelBounds.X + (panelBounds.Width - Width) / 2, SystemParameters.WorkArea.Left, SystemParameters.WorkArea.Right - Width);
+        Top = Math.Clamp(panelBounds.Y, SystemParameters.WorkArea.Top, SystemParameters.WorkArea.Bottom - Height);
+        ShowPanel();
+        MotionConnector.Enter(DetailView, TimeSpan.FromMilliseconds(167), 4);
+    }
+
     private void CloseScreenshot()
     {
-        ScreenshotWindow? viewer = screenshotWindow;
-        screenshotWindow = null;
-        viewer?.Close();
+        if (screenshotView is not ScreenshotView viewer) return;
+        viewer.CloseRequested -= CloseScreenshot;
+        screenshotView = null;
+        InvalidateCapture();
+        DetailView.Content = null;
+        MinWidth = 400;
+        Width = panelBounds.Width; Height = panelBounds.Height;
+        Left = panelBounds.X; Top = panelBounds.Y;
+        ResizeMode = ResizeMode.CanMinimize;
+        ShowHome();
     }
 }

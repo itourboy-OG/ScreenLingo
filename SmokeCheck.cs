@@ -154,7 +154,7 @@ public static partial class SmokeCheck
         Window? targetWindow = null;
         MainWindow? control = null;
         OverlayWindow? overlay = null;
-        ScreenshotWindow? screenshot = null;
+        ScreenshotView? screenshot = null;
         try
         {
             Require(!TranslationRules.NeedsTranslation("en", "en"), "Text in the target language must skip translation.");
@@ -232,8 +232,10 @@ public static partial class SmokeCheck
                 Require(originalLines.Any(region => region.Text.Contains("Settings", StringComparison.OrdinalIgnoreCase)), "The overlay must be excluded from capture so recognition still sees the original text.");
                 results.Add(new CheckResult("click-through overlay and capture exclusion", true, "Native overlay displayed; recapture still recognizes the original Settings label."));
                 overlay.Hide();
-                screenshot = new ScreenshotWindow(image, target.Title);
-                screenshot.Show();
+                screenshot = new ScreenshotView(image, target.Title);
+                control.OpenScreenshot(screenshot);
+                Require(Application.Current.Windows.OfType<Window>().Count(window => window.IsVisible && window is MainWindow) == 1 &&
+                    ReferenceEquals(control.DetailView.Content, screenshot), "The screenshot must use the existing main window.");
                 ImmutableArray<TranslatedRegion> screenshotLabels = labels.Zip(translations, (line, text) => new TranslatedRegion(line, text))
                     .Where(region => !string.Equals(region.Source.Text, region.Translation, StringComparison.OrdinalIgnoreCase)).ToImmutableArray();
                 screenshot.Present(new ScreenTranslation("en", labels.Length, screenshotLabels), settings, stopwatch.Elapsed);
@@ -267,10 +269,12 @@ public static partial class SmokeCheck
                 Require(screenshot.Labels.Visibility == Visibility.Collapsed, "The original screenshot must remain available without overlay labels.");
                 screenshot.ShowLabels.IsChecked = true;
                 screenshot.Zoom.SelectedValue = "fit";
-                SaveVisual(screenshot, Path.Combine(reportDirectory, "screenshot-preview.png"));
-                screenshot.Close();
+                SaveVisual(control, Path.Combine(reportDirectory, "screenshot-preview.png"));
+                screenshot.BackButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                Require(control.CurrentScreenshot is null && control.HomeView.IsVisible && control.Width == 424,
+                    "Closing the screenshot must restore the compact main page.");
                 screenshot = null;
-                results.Add(new CheckResult("frozen screenshot reading window", true, "Real capture and translations retained across focus changes; pointer-anchored zoom, two-axis panning, bounds and original-image controls passed."));
+                results.Add(new CheckResult("embedded screenshot reader", true, "Real capture and translations retained inside the main window; pointer-anchored zoom, two-axis panning, bounds and return to the compact page passed."));
             }
 
             targetWindow.Close();
@@ -323,7 +327,6 @@ public static partial class SmokeCheck
         finally
         {
             overlay?.Close();
-            screenshot?.Close();
             targetWindow?.Close();
             control?.Close();
         }
@@ -343,7 +346,14 @@ public static partial class SmokeCheck
         DpiScale dpi = VisualTreeHelper.GetDpi(element);
         RenderTargetBitmap bitmap = new(checked((int)Math.Ceiling(element.ActualWidth * dpi.DpiScaleX)),
             checked((int)Math.Ceiling(element.ActualHeight * dpi.DpiScaleY)), 96 * dpi.DpiScaleX, 96 * dpi.DpiScaleY, PixelFormats.Pbgra32);
-        bitmap.Render(element);
+        if (element is Window) bitmap.Render(element);
+        else
+        {
+            DrawingVisual surface = new();
+            using (DrawingContext drawing = surface.RenderOpen())
+                drawing.DrawRectangle(new VisualBrush(element), null, new Rect(0, 0, element.ActualWidth, element.ActualHeight));
+            bitmap.Render(surface);
+        }
         if (element is Window window)
         {
             DrawingVisual composited = new();

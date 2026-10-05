@@ -11,7 +11,7 @@ using System.Windows.Media.Imaging;
 namespace ScreenLingo;
 
 /// <summary>Displays one local capture and its translations, independent of subsequent focus and screen changes.</summary>
-public partial class ScreenshotWindow : Window
+public partial class ScreenshotView : UserControl
 {
     private readonly CapturedImage image;
     private double customScale = 1;
@@ -20,7 +20,7 @@ public partial class ScreenshotWindow : Window
     internal CapturedImage CapturedImage => image;
     internal ScreenTranslation? Translation { get; private set; }
 
-    public ScreenshotWindow(CapturedImage image, string targetTitle)
+    public ScreenshotView(CapturedImage image, string targetTitle)
     {
         this.image = image;
         InitializeComponent();
@@ -31,10 +31,11 @@ public partial class ScreenshotWindow : Window
         CaptureSurface.Width = image.Width;
         CaptureSurface.Height = image.Height;
         CaptureCaption.Text = targetTitle + $" · {image.Width} × {image.Height} · stored in memory only";
-        SourceInitialized += (_, _) => WindowsConnector.ExcludeFromCapture(new WindowInteropHelper(this).Handle);
-        PreviewKeyDown += (_, args) => { if (args.Key == Key.Escape) { Close(); args.Handled = true; } };
         PreviewKeyUp += (_, args) => { if (args.Key is Key.LeftCtrl or Key.RightCtrl) EndPan(); };
     }
+
+    public event Action? CloseRequested;
+    private void BackClicked(object sender, RoutedEventArgs args) => CloseRequested?.Invoke();
 
     public void SetProgress(string detail) => Status.Text = detail;
     public void SetError(string detail) => Status.Text = "Translation stopped: " + detail;

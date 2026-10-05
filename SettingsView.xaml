@@ -28,7 +28,7 @@
         <ComboBoxItem Content="Live · translate over the application" Tag="Live" />
         <ComboBoxItem Content="Screenshot · freeze a menu to read" Tag="Screenshot" />
       </ComboBox>
-      <TextBlock Text="In screenshot mode, Ctrl+Alt+T captures once and opens a separate reading window. It stays until you close it."
+      <TextBlock Text="In screenshot mode, Ctrl+Alt+T freezes the image inside ScreenLingo. Use Back or Esc to return to the main page."
                  Style="{StaticResource Caption}" Margin="0,8,0,18" />
       <TextBlock Text="What to capture" Margin="0,0,0,7" />
       <ComboBox x:Name="Scope" SelectedValuePath="Tag" AutomationProperties.AutomationId="capture-scope" AutomationProperties.Name="Capture scope">
@@ -51,12 +51,15 @@
       <CheckBox x:Name="ReducedMotion" Content="Reduce motion" AutomationProperties.AutomationId="reduce-motion" AutomationProperties.Name="Reduce motion" />
       <TextBlock Text="Keyboard navigation and Windows high contrast are supported. Translation overlays let mouse clicks pass through."
                  Style="{StaticResource Caption}" Margin="0,3,0,20" />
-      <Button x:Name="CheckUpdates" Content="Check for updates" Click="CheckUpdatesClicked" AutomationProperties.AutomationId="check-updates" />
+      <StackPanel Orientation="Horizontal">
+        <Button x:Name="CheckUpdates" Content="Check for updates" Click="CheckUpdatesClicked" AutomationProperties.AutomationId="check-updates" />
+        <ContentControl x:Name="SettingsSpinner" Style="{StaticResource UpdateActivity}" Margin="12,0,0,0" Visibility="Collapsed" AutomationProperties.AutomationId="settings-update-spinner" AutomationProperties.Name="Checking for updates" />
+      </StackPanel>
       <TextBlock x:Name="UpdateStatus" Text="Updates are checked when ScreenLingo starts. Downloads and installation are your choice."
                  Style="{StaticResource Caption}" Margin="0,8,0,0" AutomationProperties.LiveSetting="Polite" />
     </StackPanel></ScrollViewer>
     <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,20,0,0">
-      <Button Content="Cancel" Click="CancelClicked" AutomationProperties.AutomationId="cancel-settings" Margin="0,0,9,0" /><Button x:Name="SaveChanges" Content="Save changes" IsDefault="True" Click="SaveClicked"
+      <Button Content="Back" Click="CancelClicked" AutomationProperties.AutomationId="cancel-settings" Margin="0,0,9,0" /><Button x:Name="SaveChanges" Content="Save changes" IsDefault="True" Click="SaveClicked"
         Background="{DynamicResource Accent}" Foreground="{DynamicResource AccentInk}" AutomationProperties.AutomationId="save-settings" />
     </StackPanel>
   </Grid>

@@ -40,6 +40,7 @@ public partial class MainWindow : Window
     private bool busy;
     private bool initialized;
     private bool closing;
+    private bool fatalError;
     private readonly System.Collections.Generic.List<int> shortcuts = [];
 
     public MainWindow(SettingsConnector store, AppSettings settings)
@@ -48,6 +49,7 @@ public partial class MainWindow : Window
         this.settings = settings;
         updates = new UpdateConnector(Path.Combine(store.StorageDirectory, "Updates"), store.Warn);
         ThemeConnector.Apply(settings.ColorSkin);
+        MotionConnector.ApplyPreferences(settings.ReduceMotion);
         ocr = new OcrConnector(Path.Combine(AppContext.BaseDirectory, "Models"));
         onlineHttp = new HttpConnector(TimeSpan.FromSeconds(12), store.Warn);
         offlineHttp = new HttpConnector(TimeSpan.FromSeconds(90), store.Warn);
@@ -90,8 +92,18 @@ public partial class MainWindow : Window
             }
         };
         StateChanged += (_, _) => { if (WindowState == WindowState.Minimized) Hide(); };
-        PreviewKeyDown += (_, args) => { if (args.Key == Key.Escape && enabled) { Pause(); args.Handled = true; } };
+        PreviewKeyDown += (_, args) =>
+        {
+            if (args.Key != Key.Escape) return;
+            if (Notice.IsVisible) DismissNoticeClicked(this, args);
+            else if (screenshotView is not null) CloseScreenshot();
+            else if (DetailView.IsVisible || AboutView.IsVisible) ShowHome();
+            else if (enabled) Pause();
+            else return;
+            args.Handled = true;
+        };
         Closing += OnClosing;
+        SystemParameters.StaticPropertyChanged += WindowsPreferencesChanged;
         targetTimer.Start();
         scanTimer.Start();
     }
@@ -100,7 +112,7 @@ public partial class MainWindow : Window
     {
         if (message != 0x0312) return 0;
         handled = true;
-        switch ((int)wParam) { case 1: Toggle(); break; case 2: ShowPanel(); break; case 3: Pause(); break; }
+        switch ((int)wParam) { case 1: if (!Notice.IsVisible) Toggle(); break; case 2: ShowPanel(); break; case 3: Pause(); break; }
         return 0;
     }
 
@@ -211,7 +223,7 @@ public partial class MainWindow : Window
             if (generation != startedGeneration) return;
             Pause();
             SetStatus("Translation stopped", error.Message);
-            MessageBox.Show(this, error.ToString(), "ScreenLingo · Translation error", MessageBoxButton.OK, MessageBoxImage.Error);
+            ShowError("Translation stopped", error);
         }
         finally
         {
@@ -237,7 +249,7 @@ public partial class MainWindow : Window
         view.Cancelled += ShowHome;
         HomeView.Visibility = Visibility.Collapsed;
         DetailView.Content = view;
-        DetailView.Visibility = Visibility.Visible;
+        MotionConnector.Enter(DetailView, TimeSpan.FromMilliseconds(167), 4);
     }
 
     private void SavePreferences(AppSettings updated)
@@ -246,6 +258,7 @@ public partial class MainWindow : Window
         store.Save(settings);
         scanTimer.Interval = TimeSpan.FromMilliseconds(settings.ScanIntervalMs);
         ThemeConnector.Apply(settings.ColorSkin);
+        MotionConnector.ApplyPreferences(settings.ReduceMotion);
         Mode.SelectedValue = settings.Mode.ToString();
         currentTarget = null;
         InvalidateCapture();
@@ -261,6 +274,7 @@ public partial class MainWindow : Window
         DetailView.Visibility = Visibility.Collapsed;
         AboutView.Visibility = Visibility.Collapsed;
         HomeView.Visibility = Visibility.Visible;
+        MotionConnector.Enter(HomeView, TimeSpan.FromMilliseconds(167), 0);
     }
 
     private void BackClicked(object sender, RoutedEventArgs args) => ShowHome();
@@ -273,15 +287,68 @@ public partial class MainWindow : Window
     {
         HomeView.Visibility = Visibility.Collapsed;
         AboutVersion.Text = ApplicationIdentity.Name + " " + ApplicationIdentity.Version + " · preview";
-        AboutView.Visibility = Visibility.Visible;
+        MotionConnector.Enter(AboutView, TimeSpan.FromMilliseconds(167), 4);
     }
 
     private void SetStatus(string title, string detail) { StatusTitle.Text = title; StatusDetail.Text = detail; }
+
+    private void WindowsPreferencesChanged(object? sender, PropertyChangedEventArgs args)
+    {
+        if (args.PropertyName == nameof(SystemParameters.ClientAreaAnimation))
+            Dispatcher.Invoke(() =>
+            {
+                MotionConnector.ApplyPreferences(settings.ReduceMotion);
+                if (UpdateSpinner.IsVisible) MotionConnector.StartSpinner(UpdateSpinner);
+            });
+    }
+
+    internal void ShowError(string title, Exception error)
+    {
+        NoticeTitle.Text = title;
+        NoticeMessage.Text = error.Message;
+        NoticeDetails.Text = error.ToString();
+        NoticeDetails.Visibility = Visibility.Collapsed;
+        DetailsToggle.Content = "Show technical details";
+        HomeView.IsEnabled = false;
+        DetailView.IsEnabled = false;
+        AboutView.IsEnabled = false;
+        MotionConnector.Enter(Notice, TimeSpan.FromMilliseconds(167), 0);
+        ShowPanel();
+        DismissNotice.Focus();
+    }
+
+    internal void ShowFatalError(Exception error)
+    {
+        fatalError = true;
+        enabled = false;
+        targetTimer.Stop(); scanTimer.Stop(); updateTimer.Stop();
+        cancellation?.Cancel(); updateCancellation.Cancel(); overlay.Hide();
+        ShowError("ScreenLingo needs to close", error);
+        DismissNotice.Content = "Close ScreenLingo";
+    }
+
+    private void DetailsClicked(object sender, RoutedEventArgs args)
+    {
+        NoticeDetails.Visibility = NoticeDetails.IsVisible ? Visibility.Collapsed : Visibility.Visible;
+        DetailsToggle.Content = NoticeDetails.IsVisible ? "Hide technical details" : "Show technical details";
+    }
+
+    private void CopyErrorClicked(object sender, RoutedEventArgs args) => Clipboard.SetText(NoticeDetails.Text);
+
+    private void DismissNoticeClicked(object sender, RoutedEventArgs args)
+    {
+        if (fatalError) { Close(); return; }
+        Notice.Visibility = Visibility.Collapsed;
+        HomeView.IsEnabled = true;
+        DetailView.IsEnabled = true;
+        AboutView.IsEnabled = true;
+    }
 
     private void OnClosing(object? sender, CancelEventArgs args)
     {
         if (closing) return;
         closing = true;
+        SystemParameters.StaticPropertyChanged -= WindowsPreferencesChanged;
         enabled = false;
         targetTimer.Stop();
         scanTimer.Stop();

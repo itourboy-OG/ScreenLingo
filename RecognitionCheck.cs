@@ -41,12 +41,12 @@ public static partial class SmokeCheck
             CaptureTarget target = WindowsConnector.TestWindowTarget(game.MainWindowHandle);
             control.Show();
             await control.CaptureScreenshotAsync(target);
-            ScreenshotWindow viewer = Application.Current.Windows.OfType<ScreenshotWindow>().Single();
+            ScreenshotView viewer = control.CurrentScreenshot ?? throw new InvalidOperationException("Screenshot must open inside the main window.");
             File.WriteAllBytes(Path.Combine(reportDirectory, "captured-game.png"), viewer.CapturedImage.Png);
             Require(viewer.Translation is not null, "The actual screenshot capture and translation must complete.");
             File.WriteAllText(Path.Combine(reportDirectory, "game-report.json"), JsonSerializer.Serialize(viewer.Translation,
                 new JsonSerializerOptions { WriteIndented = true }));
-            SaveVisual(viewer, Path.Combine(reportDirectory, "game-viewer.png"));
+            SaveVisual(control, Path.Combine(reportDirectory, "game-viewer.png"));
             return 0;
         }
         catch (Exception error)

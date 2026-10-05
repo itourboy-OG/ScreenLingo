@@ -65,7 +65,8 @@ public partial class SettingsView : UserControl
     {
         CheckUpdates.IsEnabled = false;
         UpdateStatus.Text = "Checking GitHub for updates…";
+        MotionConnector.StartSpinner(SettingsSpinner);
         try { UpdateStatus.Text = await checkUpdates(); }
-        finally { CheckUpdates.IsEnabled = true; }
+        finally { MotionConnector.StopSpinner(SettingsSpinner); CheckUpdates.IsEnabled = true; }
     }
 }

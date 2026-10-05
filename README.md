@@ -12,9 +12,9 @@
 
 Read a game's settings, navigate an unfamiliar menu, or translate another application without reaching for your phone. Choose your output language, switch to the window you want to read, and toggle the translation overlay with **Ctrl+Alt+T**.
 
-Live mode checks that a region contains actual text and stays still before translating it. Moving chat and scrolling tickers are skipped; open a stationary chat panel or freeze a menu in Screenshot mode to read it. Settings and About stay inside the main ScreenLingo window.
+Live mode checks that a region contains actual text and stays still before translating it. Moving chat and scrolling tickers are skipped; open a stationary chat panel or freeze a menu in Screenshot mode to read it. Settings, About, screenshot reading and error notices stay inside the main ScreenLingo window.
 
-For a menu that is difficult to read live, select **Screenshot translation** on the main panel or in Settings. **Ctrl+Alt+T** captures the current game once and opens a frozen image with a readable translation list. Use **Ctrl+mouse wheel** to zoom around your pointer, and **Ctrl+left-drag** to move the zoomed image. The zoom selector also offers **Fit image**, **100%**, **150%** and **200%**; wheel zoom spans 10%–800%. Turn off the image labels to inspect the original. The **Capture in 3 seconds** button gives you time to switch to the game. Close the reading window with Esc; Ctrl+Alt+Esc closes it and cancels any work in progress.
+For a menu that is difficult to read live, select **Screenshot translation** on the main panel or in Settings. **Ctrl+Alt+T** captures the current game once and opens a frozen image with a readable translation list inside ScreenLingo. The same window expands for reading, then returns to its compact layout with **Back** or **Esc**. Use **Ctrl+mouse wheel** to zoom around your pointer, and **Ctrl+left-drag** to move the zoomed image. The zoom selector also offers **Fit image**, **100%**, **150%** and **200%**; wheel zoom spans 10%–800%. Turn off the image labels to inspect the original. The **Capture in 3 seconds** button gives you time to switch to the game. Ctrl+Alt+Esc returns to the main page and cancels any work in progress.
 
 **Early Windows preview.** Actual games and exclusive fullscreen still need live testing. See [compatibility and current limits](#compatibility-and-current-limits) before choosing a display mode.
 
@@ -111,7 +111,9 @@ Preferences and retry warnings are stored under **`%LOCALAPPDATA%\ScreenLingo`**
 
 ScreenLingo checks GitHub Releases **on startup and every six hours** while running. You can also use **Settings → Check for updates**.
 
-When a newer version is available, the main screen shows an update banner. Download its **Setup EXE** with progress, then choose **Install now** to close ScreenLingo and open the branded installer, or **Install later** to keep the download across restarts. Setup starts with your current application folder selected. Finish the wizard to install, and leave **Launch ScreenLingo** checked to reopen the app. Your preferences are preserved.
+Checking shows a small activity indicator. When a newer version is available, the main screen shows an update banner with **Download update** and **Download later**. Downloading shows a smoothly advancing bar, the real percentage and downloaded size. A checkmark appears after verification; choose **Install now** to close ScreenLingo and open the branded Windows installer, or **Install later** to keep the download across restarts. Download later dismisses the offer until another check. Setup starts with your current application folder selected. Finish the wizard to install, and leave **Launch ScreenLingo** checked to reopen the app. Your preferences are preserved. Downloads and installation require your clicks.
+
+The banner, page transitions and buttons use short native animations. **Settings → Reduce motion** and the Windows animation preference disable motion. Update notices stay inside the app; Setup and Windows permission prompts use their own Windows interface.
 
 The updater verifies the EXE's size and GitHub SHA-256 digest before saving it and again before starting Setup. Deferred installers stay under **`%LOCALAPPDATA%\ScreenLingo\Updates`**. Setup handles application files and Windows uninstall registration; preferences stay separately under your local application data. Update checks do not send screenshots or recognized text to GitHub.
 
@@ -145,7 +147,8 @@ dotnet build ScreenLingo.csproj --no-restore
 dotnet run --project ScreenLingo.csproj --no-build -- --smoke-test C:\path\to\test-output
 dotnet run --project ScreenLingo.csproj --no-build -- --recognition-check C:\path\to\menu.png zh-CN C:\path\to\recognition-output
 dotnet run --project ScreenLingo.csproj --no-build -- --game-check <game-process-id> C:\path\to\game-test-output
-dotnet run --project ScreenLingo.csproj --no-build -- --install-check C:\path\to\install-test-output C:\path\to\ScreenLingo-0.4.1-Setup-x64.exe C:\path\to\previous-0.2.0-package
+dotnet run --project ScreenLingo.csproj --no-build -- --install-check C:\path\to\install-test-output C:\path\to\ScreenLingo-0.5.1-Setup-x64.exe C:\path\to\previous-0.2.0-package
+dotnet run --project ScreenLingo.csproj --no-build -- --motion-check C:\path\to\motion-test-output
 dotnet run --project ScreenLingo.csproj --no-build -- --update-check C:\path\to\update-test-output
 .\Publish.ps1 -PackageDirectory C:\path\to\package
 pwsh -STA -File .\Build-Installer.ps1 -PackageDirectory C:\path\to\package -InstallerOutputDirectory C:\path\to\releases
@@ -155,7 +158,7 @@ The smoke check creates synthetic menu windows, captures those windows, calls th
 
 The recognition check measures an explicitly supplied image locally. The game check captures only the window belonging to the process ID you provide, saves its image and results in the report directory, and uses the configured test service (online MyMemory) to translate that window's recognized text. It does not depend on keeping the game focused.
 
-`Publish.ps1` builds the self-contained Windows package, runs the appearance check and refreshes `Desktop\ScreenLingo\ScreenLingo.exe` after the check passes. Close the Desktop copy first. The appearance check uses the actual preferences form, verifies theme persistence and renders each skin without network requests. Results are saved in `screen-lingo-appearance-check` beside the package directory.
+`Publish.ps1` builds the self-contained Windows package and runs the appearance check in a separate directory. It does not replace existing Desktop or installed application copies. The appearance check uses the actual preferences form, verifies theme persistence and renders each skin without network requests. Results are saved in `screen-lingo-appearance-check` beside the package directory. The motion check uses the real public GitHub feed and downloads an installer into its isolated report folder to verify the update presentation; it never starts Setup.
 
 `Build-Installer.ps1` requires PowerShell 7 and pins the official Inno Setup 7.1.0 compiler and Microsoft runtime download by SHA-256 and Authenticode publisher. Build tools stay in the project's ignored `.tools` folder. It creates the branded installer and refreshes **`Desktop\ScreenLingo\ScreenLingo Setup.exe`**. The lifecycle check requires a new isolated report folder and no existing Windows-registered ScreenLingo installation; it installs, upgrades the actual previous app, and uninstalls its disposable copy.
 

@@ -1,15 +1,16 @@
-<Window x:Class="ScreenLingo.ScreenshotWindow" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Title="ScreenLingo · Screenshot" Width="1060" Height="700"
-        MinWidth="740" MinHeight="480" WindowStartupLocation="CenterScreen" Style="{StaticResource {x:Type Window}}">
-  <Grid Margin="20"><Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+<UserControl x:Class="ScreenLingo.ScreenshotView" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Foreground="{DynamicResource Ink}" FontFamily="Segoe UI" FontSize="14">
+  <Grid><Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
     <Grid Margin="0,0,0,12"><Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
       <StackPanel><TextBlock Text="Screenshot translation" FontSize="22" FontWeight="SemiBold" />
         <TextBlock x:Name="CaptureCaption" Style="{StaticResource Caption}" Margin="0,4,12,0" /></StackPanel>
-      <ComboBox x:Name="Zoom" Grid.Column="1" Width="140" SelectedValuePath="Tag" SelectedValue="fit" SelectionChanged="ZoomChanged"
+      <ComboBox x:Name="Zoom" Grid.Column="1" Width="140" Margin="0,0,80,0" SelectedValuePath="Tag" SelectedValue="fit" SelectionChanged="ZoomChanged"
                 AutomationProperties.AutomationId="screenshot-zoom" AutomationProperties.Name="Screenshot zoom">
         <ComboBoxItem Content="Fit image" Tag="fit" /><ComboBoxItem Content="100%" Tag="1" /><ComboBoxItem Content="150%" Tag="1.5" /><ComboBoxItem Content="200%" Tag="2" />
         <ComboBoxItem x:Name="CustomZoom" Tag="custom" Visibility="Collapsed" />
       </ComboBox>
+      <Button x:Name="BackButton" Grid.Column="1" Content="Back" HorizontalAlignment="Right" Click="BackClicked" AutomationProperties.AutomationId="screenshot-back" />
     </Grid>
     <TextBlock x:Name="Status" Grid.Row="1" Text="Recognizing text…" Margin="0,0,0,12" TextWrapping="Wrap"
                AutomationProperties.AutomationId="screenshot-status" AutomationProperties.LiveSetting="Polite" />
@@ -36,8 +37,8 @@
     <Grid Grid.Row="3" Margin="0,14,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition /></Grid.ColumnDefinitions>
       <CheckBox x:Name="ShowLabels" Content="Show labels on image" IsChecked="True" Checked="LabelsChanged" Unchecked="LabelsChanged"
                 AutomationProperties.AutomationId="screenshot-show-labels" />
-      <TextBlock Grid.Column="1" Text="Ctrl+wheel zooms · Ctrl+left-drag moves the image.&#xA;Ctrl+Alt+T in your game takes a new capture. Esc closes this window."
+      <TextBlock Grid.Column="1" Text="Ctrl+wheel zooms · Ctrl+left-drag moves the image.&#xA;Ctrl+Alt+T in your game takes a new capture. Esc returns to ScreenLingo."
                  Style="{StaticResource Caption}" TextWrapping="Wrap" VerticalAlignment="Center" Margin="16,0,0,0" />
     </Grid>
   </Grid>
-</Window>
+</UserControl>
