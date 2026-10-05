@@ -39,8 +39,8 @@ public partial class App : Application
         if (args.Args.Contains("--install-check", StringComparer.Ordinal))
         {
             ShutdownMode = ShutdownMode.OnExplicitShutdown;
-            if (args.Args.Length != 3) throw new ArgumentException("Usage: ScreenLingo.exe --install-check <report-directory> <package-zip>");
-            Shutdown(await SmokeCheck.RunInstallAsync(Path.GetFullPath(args.Args[1]), Path.GetFullPath(args.Args[2])));
+            if (args.Args.Length != 4) throw new ArgumentException("Usage: ScreenLingo.exe --install-check <report-directory> <setup-exe> <previous-0.2.0-package-directory>");
+            Shutdown(await SmokeCheck.RunInstallAsync(Path.GetFullPath(args.Args[1]), Path.GetFullPath(args.Args[2]), Path.GetFullPath(args.Args[3])));
             return;
         }
         if (args.Args.Contains("--update-check", StringComparer.Ordinal))

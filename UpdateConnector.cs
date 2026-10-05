@@ -2,7 +2,6 @@ using System;
 using System.Collections.Immutable;
 using System.Diagnostics;
 using System.IO;
-using System.IO.Compression;
 using System.Linq;
 using System.Net.Http;
 using System.Security.Cryptography;
@@ -15,9 +14,8 @@ namespace ScreenLingo;
 
 public sealed record UpdateRelease(string Version, Uri DownloadUrl, long Size, string Sha256);
 public sealed record DownloadProgress(long Received, long Total);
-public sealed record ReadyUpdate([property: JsonRequired] string Version, [property: JsonRequired] string ArchivePath,
-    [property: JsonRequired] string SourceDirectory, [property: JsonRequired] string Sha256);
-public sealed record InstallRequest(ReadyUpdate Package, string TargetDirectory, int ProcessId, string UpdateDirectory);
+public sealed record ReadyUpdate([property: JsonRequired] string Version, [property: JsonRequired] string InstallerPath,
+    [property: JsonRequired] string Sha256);
 
 public static class UpdateRules
 {
@@ -34,7 +32,7 @@ public static class UpdateRules
             throw new JsonException("GitHub's latest release must be published and use a stable vMAJOR.MINOR.PATCH tag.");
         if (version <= installed) return null;
         if (release.Assets.IsDefault) throw new JsonException("GitHub's release contains no asset list.");
-        string assetName = $"ScreenLingo-{version.ToString(3)}-win-x64.zip";
+        string assetName = $"ScreenLingo-{version.ToString(3)}-Setup-x64.exe";
         ImmutableArray<AssetResponse> matches = release.Assets.Where(item => item.Name == assetName).ToImmutableArray();
         if (matches.Length != 1) throw new JsonException($"GitHub release {release.Tag} must contain exactly one {assetName}; received={matches.Length}.");
         AssetResponse asset = matches[0];
@@ -59,7 +57,7 @@ public static class UpdateRules
         [property: JsonRequired, JsonPropertyName("digest")] string? Digest);
 }
 
-/// <summary>Connects GitHub Releases to verified portable updates. Downloads are staged until the user chooses to install.</summary>
+/// <summary>Connects GitHub Releases to verified Windows installers. Downloads wait until the user chooses to install.</summary>
 public sealed class UpdateConnector : IDisposable
 {
     private readonly HttpConnector metadata;
@@ -84,7 +82,7 @@ public sealed class UpdateConnector : IDisposable
 
     public ReadyUpdate? LoadReady(Version installed)
     {
-        string path = Path.Combine(directory, "ready.json");
+        string path = Path.Combine(directory, "installer-ready.json");
         if (!File.Exists(path)) return null;
         ReadyUpdate ready = JsonSerializer.Deserialize<ReadyUpdate>(File.ReadAllText(path))
             ?? throw new JsonException("The saved update record is null: " + path);
@@ -97,14 +95,12 @@ public sealed class UpdateConnector : IDisposable
     public async Task<ReadyUpdate> DownloadAsync(UpdateRelease release, IProgress<DownloadProgress> progress, CancellationToken cancellation)
     {
         Directory.CreateDirectory(directory);
-        string archivePath = Path.Combine(directory, "ScreenLingo-" + release.Version + ".zip");
-        string partialPath = archivePath + ".download";
-        await DownloadArchiveAsync(release, partialPath, progress, cancellation);
-        File.Move(partialPath, archivePath, true);
-        string stage = Path.Combine(directory, "staged-" + release.Version + "-" + Guid.NewGuid().ToString("N"));
-        await Task.Run(() => ExtractPackage(archivePath, stage, release.Version, cancellation), cancellation);
-        ReadyUpdate ready = new(release.Version, archivePath, stage, release.Sha256);
-        string manifest = Path.Combine(directory, "ready.json");
+        string installerPath = Path.Combine(directory, "ScreenLingo-" + release.Version + "-Setup-x64.exe");
+        string partialPath = installerPath + ".download";
+        await DownloadInstallerAsync(release, partialPath, progress, cancellation);
+        File.Move(partialPath, installerPath, true);
+        ReadyUpdate ready = new(release.Version, installerPath, release.Sha256);
+        string manifest = Path.Combine(directory, "installer-ready.json");
         File.WriteAllText(manifest + ".tmp", JsonSerializer.Serialize(ready));
         File.Move(manifest + ".tmp", manifest, true);
         return ready;
@@ -160,59 +156,39 @@ public sealed class UpdateConnector : IDisposable
         throw new InvalidOperationException("Update download ended without a result.");
     }
 
-    internal async Task DownloadArchiveAsync(UpdateRelease release, string path, IProgress<DownloadProgress> progress, CancellationToken cancellation)
+    internal async Task DownloadInstallerAsync(UpdateRelease release, string path, IProgress<DownloadProgress> progress, CancellationToken cancellation)
     {
         await DownloadFileAsync(release, path, progress, cancellation);
         await VerifyHashAsync(path, release.Sha256, cancellation);
     }
 
-    internal static void ExtractPackage(string archivePath, string stage, string version, CancellationToken cancellation)
-    {
-        Directory.CreateDirectory(stage);
-        string prefix = Path.GetFullPath(stage) + Path.DirectorySeparatorChar;
-        using ZipArchive archive = ZipFile.OpenRead(archivePath);
-        if (archive.Entries.Count > 4096 || archive.Entries.Sum(entry => entry.Length) > 2147483648)
-            throw new InvalidDataException("The update package exceeds supported extraction limits.");
-        foreach (ZipArchiveEntry entry in archive.Entries)
-        {
-            cancellation.ThrowIfCancellationRequested();
-            string path = Path.GetFullPath(Path.Combine(stage, entry.FullName));
-            if (!path.StartsWith(prefix, StringComparison.OrdinalIgnoreCase) || entry.FullName.Contains(':') || ((entry.ExternalAttributes >> 16) & 0xF000) == 0xA000)
-                throw new InvalidDataException("The update contains an unsafe archive path: " + entry.FullName);
-            if (entry.Name.Length == 0) { Directory.CreateDirectory(path); continue; }
-            Directory.CreateDirectory(Path.GetDirectoryName(path) ?? throw new InvalidDataException("The update entry has no parent: " + entry.FullName));
-            entry.ExtractToFile(path, false);
-        }
-        foreach (string file in new[] { "ScreenLingo.exe", "ScreenLingo.dll", "ScreenLingo.deps.json", "ScreenLingo.runtimeconfig.json", "Install-Update.ps1" })
-            if (!File.Exists(Path.Combine(stage, file))) throw new InvalidDataException("The update is missing " + file);
-        if (FileVersionInfo.GetVersionInfo(Path.Combine(stage, "ScreenLingo.dll")).ProductVersion != version)
-            throw new InvalidDataException("The update DLL version does not match the published release " + version);
-    }
-
-    public async Task<Process> StartInstallAsync(ReadyUpdate ready, string targetDirectory, int processId, CancellationToken cancellation)
+    public async Task<Process> StartInstallAsync(ReadyUpdate ready, string targetDirectory, CancellationToken cancellation)
     {
         ValidateReady(ready);
-        await VerifyHashAsync(ready.ArchivePath, ready.Sha256, cancellation);
-        await VerifyStagedPackageAsync(ready, cancellation);
-        string requestPath = Path.Combine(directory, "install.json");
-        File.WriteAllText(requestPath, JsonSerializer.Serialize(new InstallRequest(ready, Path.GetFullPath(targetDirectory), processId, directory)));
-        string powershell = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System), "WindowsPowerShell", "v1.0", "powershell.exe");
-        ProcessStartInfo start = new(powershell) { UseShellExecute = false, CreateNoWindow = true, WindowStyle = ProcessWindowStyle.Hidden };
-        foreach (string argument in new[] { "-NoProfile", "-STA", "-ExecutionPolicy", "Bypass", "-File", Path.Combine(ready.SourceDirectory, "Install-Update.ps1"), "-ManifestPath", requestPath })
-            start.ArgumentList.Add(argument);
-        return Process.Start(start) ?? throw new InvalidOperationException("Windows could not start the ScreenLingo update installer.");
+        await VerifyHashAsync(ready.InstallerPath, ready.Sha256, cancellation);
+        string target = Path.GetFullPath(targetDirectory).TrimEnd(Path.DirectorySeparatorChar);
+        if (!File.Exists(Path.Combine(target, "ScreenLingo.exe")) || target.Equals(Path.GetPathRoot(target)?.TrimEnd(Path.DirectorySeparatorChar), StringComparison.OrdinalIgnoreCase))
+            throw new ArgumentException("The update destination must be the existing ScreenLingo application folder: " + targetDirectory);
+        ProcessStartInfo start = new(ready.InstallerPath) { UseShellExecute = true, WindowStyle = ProcessWindowStyle.Normal };
+        start.ArgumentList.Add("/SP-");
+        start.ArgumentList.Add("/NORESTART");
+        start.ArgumentList.Add("/DIR=" + target);
+        return Process.Start(start) ?? throw new InvalidOperationException("Windows could not start the verified ScreenLingo installer.");
     }
 
     private void ValidateReady(ReadyUpdate ready)
     {
-        if (string.IsNullOrWhiteSpace(ready.SourceDirectory) || string.IsNullOrWhiteSpace(ready.ArchivePath) || string.IsNullOrWhiteSpace(ready.Sha256))
-            throw new JsonException("The saved update record is missing a source folder, archive path or SHA-256 digest.");
-        string prefix = directory + Path.DirectorySeparatorChar;
-        if (!Path.GetFullPath(ready.SourceDirectory).StartsWith(prefix, StringComparison.OrdinalIgnoreCase)
-            || !Path.GetFullPath(ready.ArchivePath).StartsWith(prefix, StringComparison.OrdinalIgnoreCase)
-            || !File.Exists(ready.ArchivePath) || !File.Exists(Path.Combine(ready.SourceDirectory, "Install-Update.ps1"))
+        if (!Version.TryParse(ready.Version, out Version? version) || version.Build < 0 || ready.Version != version.ToString(3)
+            || string.IsNullOrWhiteSpace(ready.InstallerPath) || string.IsNullOrWhiteSpace(ready.Sha256))
+            throw new JsonException("The saved installer record is missing a stable version, installer path or SHA-256 digest.");
+        string path = Path.GetFullPath(ready.InstallerPath);
+        string expected = Path.Combine(directory, "ScreenLingo-" + ready.Version + "-Setup-x64.exe");
+        if (!path.Equals(expected, StringComparison.OrdinalIgnoreCase) || !File.Exists(path)
             || ready.Sha256.Length != 64 || !ready.Sha256.All(Uri.IsHexDigit))
-            throw new InvalidDataException("The saved update is incomplete or outside the update folder. Download it again: " + directory);
+            throw new InvalidDataException("The saved installer is incomplete or outside the update folder. Download it again: " + directory);
+        for (string? current = path; current is not null && current.StartsWith(directory, StringComparison.OrdinalIgnoreCase); current = Path.GetDirectoryName(current))
+            if ((File.GetAttributes(current) & FileAttributes.ReparsePoint) != 0)
+                throw new InvalidDataException("The installer path contains a filesystem link: " + current);
     }
 
     private static async Task VerifyHashAsync(string path, string expected, CancellationToken cancellation)
@@ -221,24 +197,6 @@ public sealed class UpdateConnector : IDisposable
         string actual = Convert.ToHexString(await SHA256.HashDataAsync(stream, cancellation));
         if (!actual.Equals(expected, StringComparison.OrdinalIgnoreCase))
             throw new InvalidDataException($"Update verification failed: file={path}; expected SHA-256={expected}; received={actual}. Download the release again.");
-    }
-
-    private static async Task VerifyStagedPackageAsync(ReadyUpdate ready, CancellationToken cancellation)
-    {
-        using ZipArchive archive = ZipFile.OpenRead(ready.ArchivePath);
-        string prefix = Path.GetFullPath(ready.SourceDirectory) + Path.DirectorySeparatorChar;
-        foreach (ZipArchiveEntry entry in archive.Entries.Where(item => item.Name.Length > 0))
-        {
-            string path = Path.GetFullPath(Path.Combine(ready.SourceDirectory, entry.FullName));
-            if (!path.StartsWith(prefix, StringComparison.OrdinalIgnoreCase) || (File.GetAttributes(path) & FileAttributes.ReparsePoint) != 0)
-                throw new InvalidDataException("The staged update contains an unsafe file: " + entry.FullName);
-            await using Stream original = entry.Open();
-            await using FileStream staged = File.OpenRead(path);
-            byte[] expected = await SHA256.HashDataAsync(original, cancellation).ConfigureAwait(false);
-            byte[] actual = await SHA256.HashDataAsync(staged, cancellation).ConfigureAwait(false);
-            if (!CryptographicOperations.FixedTimeEquals(expected, actual))
-                throw new InvalidDataException("A staged update file changed after extraction: " + entry.FullName + ". Download the update again.");
-        }
     }
 
     public void Dispose() { metadata.Dispose(); downloads.Dispose(); }

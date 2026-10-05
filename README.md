@@ -42,10 +42,17 @@ Choose a look in **Settings → Appearance**. The controls and translation label
 
 ## Get started
 
-**Requires Windows 10 version 2004 or newer, or Windows 11, x64.** The Windows package includes .NET. If native text recognition cannot start because a runtime is missing, install the [Microsoft Visual C++ x64 runtime](https://aka.ms/vs/17/release/vc_redist.x64.exe).
+<details>
+<summary><strong>A branded Windows installer</strong></summary>
 
-1. Open the [latest release](https://github.com/itourboy-OG/ScreenLingo/releases/latest) and download the ZIP ending in **`win-x64.zip`**. The source ZIP is for development.
-2. Extract the **entire ZIP** to a folder and open **`ScreenLingo.exe`**. Keep its supporting files beside it.
+![ScreenLingo Setup welcome screen with the app icon, name and a preview of the application](assets/setup.png)
+
+</details>
+
+**Requires Windows 10 version 2004 or newer, or Windows 11, x64.** Setup includes .NET, the recognition models, and the Microsoft Visual C++ x64 runtime needed for text recognition. The runtime may show a Windows permission prompt if it needs to be installed or updated.
+
+1. Open the [latest release](https://github.com/itourboy-OG/ScreenLingo/releases/latest) and download the file named **`ScreenLingo-<version>-Setup-x64.exe`**. This is the complete installer; no ZIP extraction or separate supporting-file downloads are needed.
+2. Run **ScreenLingo Setup**, choose your installation folder and optional desktop shortcut, then launch the app from the completion page or Start menu. Setup supports English and Spanish. Windows **Installed apps** provides the uninstaller.
 3. Set **From** to automatic detection or the language you know is on screen. Choose your language under **Translate to**.
 4. Enable translation, switch to your game or application, and open a menu. Start with a windowed or borderless display mode.
 5. Press **Ctrl+Alt+T** to pause or resume whenever you need it.
@@ -97,9 +104,13 @@ Preferences and retry warnings are stored under **`%LOCALAPPDATA%\ScreenLingo`**
 
 ScreenLingo checks GitHub Releases **on startup and every six hours** while running. You can also use **Settings → Check for updates**.
 
-When a newer Windows package is available, the main screen shows an update banner. Download it with progress, then choose **Install now** to close, update and reopen the app, or **Install later** to keep the download across restarts. Your preferences are preserved.
+When a newer version is available, the main screen shows an update banner. Download its **Setup EXE** with progress, then choose **Install now** to close ScreenLingo and open the branded installer, or **Install later** to keep the download across restarts. Setup starts with your current application folder selected. Finish the wizard to install, and leave **Launch ScreenLingo** checked to reopen the app. Your preferences are preserved.
 
-The updater verifies the package size and GitHub SHA-256 digest, rejects unsafe ZIP paths, and checks staged files before installation. Downloads and backups of overwritten files stay under **`%LOCALAPPDATA%\ScreenLingo\Updates`**. Installation errors are shown explicitly, and previous files are restored if copying fails. Update checks do not send screenshots or recognized text to GitHub.
+The updater verifies the EXE's size and GitHub SHA-256 digest before saving it and again before starting Setup. Deferred installers stay under **`%LOCALAPPDATA%\ScreenLingo\Updates`**. Setup handles application files and Windows uninstall registration; preferences stay separately under your local application data. Update checks do not send screenshots or recognized text to GitHub.
+
+**Upgrading from 0.2.0:** run the new Setup EXE for the installed experience. Releases also retain a ZIP labeled **0.2.0 updater compatibility** so the old ZIP-only automatic updater can move to the current code. That bridge keeps the existing folder and does not register a Windows installation; run Setup afterward if you want installation and uninstall management. New installations and version 0.3.0 onward use the Setup EXE.
+
+The preview installer is not code-signed. Windows may show an unknown-publisher warning; the name and icon do not replace a publisher certificate.
 
 ## Compatibility and current limits
 
@@ -108,7 +119,7 @@ The updater verifies the package size and GitHub SHA-256 digest, rejects unsafe 
 - **Recognition and translation can be imperfect.** Short labels, mixed languages and game-specific terms can be ambiguous. ScreenLingo translates visible text; it does not change the game's own language setting.
 - **Offline translation is unverified.** The connector is included, but its setup, speed and accuracy still need a real local-model test.
 
-Real integration checks cover window capture, English/Chinese recognition, language detection, online translation, overlay exclusion, skin persistence, public update downloads and native update installation. Synthetic menus were used for translation checks.
+Real integration checks cover window capture, English/Chinese recognition, language detection, online translation, overlay exclusion, skin persistence, update downloads and installation. Synthetic menus were used for translation checks. Each release's notes describe the checks completed for that version.
 
 ## Help shape the next update
 
@@ -125,14 +136,17 @@ Use the **.NET 9 SDK on Windows**. The source includes the recognition models an
 dotnet restore ScreenLingo.csproj --locked-mode --configfile NuGet.Config
 dotnet build ScreenLingo.csproj --no-restore
 dotnet run --project ScreenLingo.csproj --no-build -- --smoke-test C:\path\to\test-output
-dotnet run --project ScreenLingo.csproj --no-build -- --install-check C:\path\to\install-test-output C:\path\to\package.zip
+dotnet run --project ScreenLingo.csproj --no-build -- --install-check C:\path\to\install-test-output C:\path\to\ScreenLingo-0.3.0-Setup-x64.exe C:\path\to\previous-0.2.0-package
 dotnet run --project ScreenLingo.csproj --no-build -- --update-check C:\path\to\update-test-output
 .\Publish.ps1 -PackageDirectory C:\path\to\package
+pwsh -STA -File .\Build-Installer.ps1 -PackageDirectory C:\path\to\package -InstallerOutputDirectory C:\path\to\releases
 ```
 
 The smoke check creates synthetic menu windows, captures those windows, calls the real online service with synthetic menu text, and writes screenshots plus `smoke-report.json`. It never sends your desktop contents to a translation service.
 
 `Publish.ps1` builds the self-contained Windows package, runs the appearance check and refreshes `Desktop\ScreenLingo\ScreenLingo.exe` after the check passes. Close the Desktop copy first. The appearance check uses the actual preferences form, verifies theme persistence and renders each skin without network requests. Results are saved in `screen-lingo-appearance-check` beside the package directory.
+
+`Build-Installer.ps1` requires PowerShell 7 and pins the official Inno Setup 7.1.0 compiler and Microsoft runtime download by SHA-256 and Authenticode publisher. Build tools stay in the project's ignored `.tools` folder. It creates the branded installer and refreshes **`Desktop\ScreenLingo\ScreenLingo Setup.exe`**. The lifecycle check requires a new isolated report folder and no existing Windows-registered ScreenLingo installation; it installs, upgrades the actual previous app, and uninstalls its disposable copy.
 
 </details>
 

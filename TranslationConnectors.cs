@@ -183,13 +183,13 @@ public sealed class HttpConnector : IDisposable
             }
             catch (HttpRequestException error) when (error.StatusCode is null)
             {
-                if (attempt == 3) throw new HttpRequestException($"Translation service could not be reached: endpoint={request.RequestUri?.GetLeftPart(UriPartial.Path)}; {parameters}; reason={error.Message}", error);
+                if (attempt == 3) throw new HttpRequestException($"HTTP service could not be reached: endpoint={request.RequestUri?.GetLeftPart(UriPartial.Path)}; {parameters}; reason={error.Message}", error);
                 warning("connection_retry", request.RequestUri?.Host ?? "", attempt);
                 await Task.Delay(attempt * 500, cancellation);
             }
             catch (TaskCanceledException error) when (!cancellation.IsCancellationRequested)
             {
-                if (attempt == 3) throw new TimeoutException($"Translation request timed out after {client.Timeout.TotalSeconds:0} seconds per attempt: endpoint={request.RequestUri?.GetLeftPart(UriPartial.Path)}; {parameters}. Check the service or local model in Settings.", error);
+                if (attempt == 3) throw new TimeoutException($"HTTP request timed out after {client.Timeout.TotalSeconds:0} seconds per attempt: endpoint={request.RequestUri?.GetLeftPart(UriPartial.Path)}; {parameters}. Check the connection and service at that endpoint.", error);
                 warning("timeout_retry", request.RequestUri?.Host ?? "", attempt);
             }
         }

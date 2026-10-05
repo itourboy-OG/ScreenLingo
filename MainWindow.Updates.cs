@@ -34,6 +34,7 @@ public partial class MainWindow
         UpdateAction.IsEnabled = false;
         try
         {
+            availableUpdate = null;
             availableUpdate = await updates.CheckAsync(Version.Parse(ApplicationIdentity.Version), updateCancellation.Token);
             if (availableUpdate is null)
             {
@@ -70,8 +71,8 @@ public partial class MainWindow
             try
             {
                 Pause();
-                UpdateDetail.Text = "Verifying the update. ScreenLingo will close and restart.";
-                using Process installer = await updates.StartInstallAsync(ready, AppContext.BaseDirectory, Environment.ProcessId, updateCancellation.Token);
+                UpdateDetail.Text = "Verifying the installer. ScreenLingo will close and Setup will guide you through installation.";
+                using Process installer = await updates.StartInstallAsync(ready, AppContext.BaseDirectory, updateCancellation.Token);
                 Close();
             }
             catch (OperationCanceledException) when (closing) { /* Closing cancels installation preparation before the helper starts. */ }
@@ -108,7 +109,7 @@ public partial class MainWindow
         ReadyUpdate ready = readyUpdate ?? throw new InvalidOperationException("No verified update is ready to install.");
         UpdateBanner.Visibility = Visibility.Visible;
         UpdateTitle.Text = "ScreenLingo " + ready.Version + " is ready";
-        UpdateDetail.Text = "Install now, or keep the download for later. Your preferences are preserved.";
+        UpdateDetail.Text = "Open Setup now, or keep the installer for later. Your preferences are preserved.";
         UpdateProgress.Visibility = Visibility.Collapsed;
         UpdateAction.Content = "Install now";
         UpdateLater.Content = "Install later";
