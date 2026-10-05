@@ -5,3 +5,4 @@
 - Every visible control must use the selected skin, including scrollbars, sliders, checkboxes, text fields and keyboard focus indicators. Retain native control behavior and accessibility.
 - After changing the application, run `Publish.ps1 -PackageDirectory <absolute-package-output-directory>` and inspect its appearance report. It builds, checks and refreshes the same `Desktop\ScreenLingo\ScreenLingo.exe` location automatically. Run additional checks appropriate to behavior changes.
 - Keep the source and packages together in the task's `outputs` directory. Do not commit without an explicit request.
+- Keep the GitHub front page's screenshots current. Public release notes must explain shipped additions, changes and fixes, include relevant testing limits, and label future plans as provisional. Do not invent fixes or promise untested game compatibility.
