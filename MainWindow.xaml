@@ -1,10 +1,10 @@
 <Window x:Class="ScreenLingo.MainWindow" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Title="ScreenLingo" Width="424" Height="654"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Title="ScreenLingo" Width="424" Height="714"
         MinWidth="400" MinHeight="590" ResizeMode="CanMinimize" WindowStartupLocation="CenterScreen" Style="{StaticResource {x:Type Window}}">
-  <Grid Margin="26,24">
+  <Grid Margin="26,24"><Grid x:Name="HomeView">
     <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Grid.RowSpan="2"><StackPanel Margin="0,0,3,0">
-      <Grid Margin="0,0,0,24"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition /></Grid.ColumnDefinitions>
+      <Grid Margin="0,0,0,20"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition /></Grid.ColumnDefinitions>
         <Image Source="{StaticResource BrandLogo}" Width="46" Height="46" Margin="0,0,12,0" Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality" />
         <StackPanel Grid.Column="1"><TextBlock Text="ScreenLingo" FontSize="23" FontWeight="SemiBold" />
           <TextBlock Text="Understand what's on screen." Style="{StaticResource Caption}" Margin="0,2,0,0" /></StackPanel>
@@ -27,6 +27,10 @@
                      Style="{StaticResource Caption}" Margin="0,7,0,0" MinHeight="34" AutomationProperties.LiveSetting="Polite" />
         </StackPanel>
       </Border>
+      <ComboBox x:Name="Mode" SelectedValuePath="Tag" SelectionChanged="ModeChanged" Margin="0,0,0,16"
+                AutomationProperties.AutomationId="translation-mode" AutomationProperties.Name="Translation mode">
+        <ComboBoxItem Content="Live translation" Tag="Live" /><ComboBoxItem Content="Screenshot translation" Tag="Screenshot" />
+      </ComboBox>
       <TextBlock Text="FROM" Style="{StaticResource Caption}" FontWeight="SemiBold" Margin="0,0,0,7" />
       <ComboBox x:Name="SourceLanguage" DisplayMemberPath="Name" SelectedValuePath="Code" SelectionChanged="LanguageChanged"
                 AutomationProperties.AutomationId="source-language" AutomationProperties.Name="Source language" />
@@ -34,15 +38,29 @@
       <ComboBox x:Name="TargetLanguage" DisplayMemberPath="Name" SelectedValuePath="Code" SelectionChanged="LanguageChanged"
                 AutomationProperties.AutomationId="target-language" AutomationProperties.Name="Translation language" />
       <Button x:Name="ToggleTranslation" Content="Enable translation" Click="ToggleClicked" Background="{DynamicResource Accent}"
-              Foreground="{DynamicResource AccentInk}" FontWeight="SemiBold" FontSize="15" Margin="0,24,0,0" Padding="14,14"
+              Foreground="{DynamicResource AccentInk}" FontWeight="SemiBold" FontSize="15" Margin="0,18,0,0" Padding="14,14"
               AutomationProperties.AutomationId="toggle-translation" AutomationProperties.Name="Toggle translation" />
-      <TextBlock Text="Ctrl + Alt + T  ·  toggle from any app" Style="{StaticResource Caption}" HorizontalAlignment="Center" Margin="0,11,0,0" />
+      <TextBlock x:Name="ShortcutCaption" Text="Ctrl + Alt + T  ·  toggle from any app" Style="{StaticResource Caption}" HorizontalAlignment="Center" Margin="0,11,0,0" />
       <TextBlock x:Name="ServiceCaption" Style="{StaticResource Caption}" TextAlignment="Center" Margin="0,18,0,0" />
     </StackPanel></ScrollViewer>
-    <Grid Grid.Row="2" Margin="0,20,0,0"><Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+    <Grid Grid.Row="2" Margin="0,16,0,0"><Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
       <TextBlock x:Name="VersionCaption" Style="{StaticResource Caption}" VerticalAlignment="Center" />
-      <Button Grid.Column="1" Content="About" Click="AboutClicked" Margin="0,0,8,0" AutomationProperties.AutomationId="about" />
+      <Button x:Name="AboutButton" Grid.Column="1" Content="About" Click="AboutClicked" Margin="0,0,8,0" AutomationProperties.AutomationId="about" />
       <Button x:Name="SettingsButton" Grid.Column="2" Content="Settings" Click="SettingsClicked" AutomationProperties.AutomationId="settings" />
+    </Grid>
+  </Grid>
+    <ContentControl x:Name="DetailView" Visibility="Collapsed" AutomationProperties.AutomationId="settings-page" />
+    <Grid x:Name="AboutView" Visibility="Collapsed" AutomationProperties.AutomationId="about-page">
+      <Grid.RowDefinitions><RowDefinition /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+      <StackPanel>
+        <Image Source="{StaticResource BrandLogo}" Width="80" Height="80" HorizontalAlignment="Left" Margin="0,0,0,20" />
+        <TextBlock Text="About ScreenLingo" FontSize="24" FontWeight="SemiBold" />
+        <TextBlock x:Name="AboutVersion" Style="{StaticResource Caption}" Margin="0,8,0,24" />
+        <TextBlock Text="Understand games and applications in your language." TextWrapping="Wrap" FontSize="17" Margin="0,0,0,20" />
+        <TextBlock Text="Ctrl+Alt+T · translate or capture&#10;Ctrl+Alt+H · open ScreenLingo&#10;Ctrl+Alt+Esc · pause&#10;&#10;Minimize to keep ScreenLingo in the system tray.&#10;&#10;Live mode reads stationary text and skips moving chat. Screenshot mode freezes a menu for closer reading.&#10;&#10;Short labels can be ambiguous. Select the source language manually when needed.&#10;&#10;Exclusive full-screen and protected content depend on the game."
+                   Style="{StaticResource Caption}" />
+      </StackPanel>
+      <Button Grid.Row="1" Content="Back" Click="BackClicked" HorizontalAlignment="Right" AutomationProperties.AutomationId="about-back" />
     </Grid>
   </Grid>
 </Window>

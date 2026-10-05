@@ -1,7 +1,7 @@
-<Window x:Class="ScreenLingo.SettingsWindow" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Title="ScreenLingo · Settings" Width="466" Height="700"
-        ResizeMode="NoResize" WindowStartupLocation="CenterOwner" Style="{StaticResource {x:Type Window}}">
-  <Grid Margin="24"><Grid.RowDefinitions><RowDefinition /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+<UserControl x:Class="ScreenLingo.SettingsView" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Foreground="{DynamicResource Ink}" FontFamily="Segoe UI" FontSize="14">
+  <Grid><Grid.RowDefinitions><RowDefinition /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
     <ScrollViewer x:Name="SettingsScroll" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" AutomationProperties.AutomationId="settings-scroll"><StackPanel Margin="0,0,10,0">
       <TextBlock Text="Settings" FontSize="24" FontWeight="SemiBold" Margin="0,0,0,20" />
       <TextBlock Text="Appearance" FontWeight="SemiBold" Margin="0,0,0,9" />
@@ -23,6 +23,13 @@
                    Style="{StaticResource Caption}" Margin="0,7,0,10" />
         <Button Content="Open Ollama setup" Click="OpenOllamaClicked" HorizontalAlignment="Left" Margin="0,0,0,18" />
       </StackPanel>
+      <TextBlock Text="Translation mode" Margin="0,0,0,7" />
+      <ComboBox x:Name="Mode" SelectedValuePath="Tag" AutomationProperties.AutomationId="translation-mode" AutomationProperties.Name="Translation mode">
+        <ComboBoxItem Content="Live · translate over the application" Tag="Live" />
+        <ComboBoxItem Content="Screenshot · freeze a menu to read" Tag="Screenshot" />
+      </ComboBox>
+      <TextBlock Text="In screenshot mode, Ctrl+Alt+T captures once and opens a separate reading window. It stays until you close it."
+                 Style="{StaticResource Caption}" Margin="0,8,0,18" />
       <TextBlock Text="What to capture" Margin="0,0,0,7" />
       <ComboBox x:Name="Scope" SelectedValuePath="Tag" AutomationProperties.AutomationId="capture-scope" AutomationProperties.Name="Capture scope">
         <ComboBoxItem Content="Active window · follows your clicks" Tag="ActiveWindow" />
@@ -49,8 +56,8 @@
                  Style="{StaticResource Caption}" Margin="0,8,0,0" AutomationProperties.LiveSetting="Polite" />
     </StackPanel></ScrollViewer>
     <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,20,0,0">
-      <Button Content="Cancel" IsCancel="True" Margin="0,0,9,0" /><Button x:Name="SaveChanges" Content="Save changes" IsDefault="True" Click="SaveClicked"
+      <Button Content="Cancel" Click="CancelClicked" AutomationProperties.AutomationId="cancel-settings" Margin="0,0,9,0" /><Button x:Name="SaveChanges" Content="Save changes" IsDefault="True" Click="SaveClicked"
         Background="{DynamicResource Accent}" Foreground="{DynamicResource AccentInk}" AutomationProperties.AutomationId="save-settings" />
     </StackPanel>
   </Grid>
-</Window>
+</UserControl>

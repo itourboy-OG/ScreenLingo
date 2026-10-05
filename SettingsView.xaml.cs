@@ -8,13 +8,14 @@ using System.Windows.Controls;
 namespace ScreenLingo;
 
 /// <summary>Connects the preferences form to a new validated settings value.</summary>
-public partial class SettingsWindow : Window
+public partial class SettingsView : UserControl
 {
     private readonly AppSettings initial;
     private readonly Func<Task<string>> checkUpdates;
-    public AppSettings? Result { get; private set; }
+    public event Action<AppSettings>? Saved;
+    public event Action? Cancelled;
 
-    public SettingsWindow(AppSettings settings, Func<Task<string>> checkUpdates)
+    public SettingsView(AppSettings settings, Func<Task<string>> checkUpdates)
     {
         initial = settings;
         this.checkUpdates = checkUpdates;
@@ -22,6 +23,7 @@ public partial class SettingsWindow : Window
         Skin.SelectedValue = settings.ColorSkin.ToString();
         Provider.SelectedValue = settings.Provider.ToString();
         Scope.SelectedValue = settings.Scope.ToString();
+        Mode.SelectedValue = settings.Mode.ToString();
         Interval.SelectedValue = settings.ScanIntervalMs.ToString(CultureInfo.InvariantCulture);
         LocalModel.Text = settings.OllamaModel;
         TextSize.Value = settings.OverlayFontSize;
@@ -41,17 +43,20 @@ public partial class SettingsWindow : Window
 
     private void SaveClicked(object sender, RoutedEventArgs args)
     {
-        Result = TranslationRules.ValidateSettings(initial with
+        AppSettings result = TranslationRules.ValidateSettings(initial with
         {
             ColorSkin = Enum.Parse<ColorSkin>((string)Skin.SelectedValue),
             Provider = Enum.Parse<TranslationProvider>((string)Provider.SelectedValue),
             Scope = Enum.Parse<CaptureScope>((string)Scope.SelectedValue),
+            Mode = Enum.Parse<TranslationMode>((string)Mode.SelectedValue),
             ScanIntervalMs = int.Parse((string)Interval.SelectedValue, CultureInfo.InvariantCulture),
             OverlayFontSize = checked((int)TextSize.Value), OverlayOpacity = BackgroundOpacity.Value,
             ReduceMotion = ReducedMotion.IsChecked == true, OllamaModel = LocalModel.Text.Trim()
         });
-        DialogResult = true;
+        Saved?.Invoke(result);
     }
+
+    private void CancelClicked(object sender, RoutedEventArgs args) => Cancelled?.Invoke();
 
     private void OpenOllamaClicked(object sender, RoutedEventArgs args) =>
         _ = Process.Start(new ProcessStartInfo("https://ollama.com/download/windows") { UseShellExecute = true });

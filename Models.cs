@@ -14,11 +14,14 @@ public sealed record CapturedImage(byte[] Png, int Width, int Height);
 public sealed record TextRegion(string Text, PixelRect Bounds, float Confidence);
 public sealed record TranslatedRegion(TextRegion Source, string Translation);
 public sealed record TranslationKey(string Provider, string Source, string Target, string Text);
+public sealed record ScreenTranslation(string SourceLanguage, int RecognizedCount, ImmutableArray<TranslatedRegion> Regions);
 
 [JsonConverter(typeof(JsonStringEnumConverter<TranslationProvider>))]
 public enum TranslationProvider { MyMemory, Ollama }
 [JsonConverter(typeof(JsonStringEnumConverter<CaptureScope>))]
 public enum CaptureScope { ActiveWindow, WindowUnderPointer, MonitorUnderPointer }
+[JsonConverter(typeof(JsonStringEnumConverter<TranslationMode>))]
+public enum TranslationMode { Live, Screenshot }
 [JsonConverter(typeof(JsonStringEnumConverter<ColorSkin>))]
 public enum ColorSkin { Copper, Paper, Plum }
 
@@ -28,6 +31,7 @@ public sealed record AppSettings
     public required string TargetLanguage { get; init; }
     public required TranslationProvider Provider { get; init; }
     public required CaptureScope Scope { get; init; }
+    public required TranslationMode Mode { get; init; }
     public required int ScanIntervalMs { get; init; }
     public required int OverlayFontSize { get; init; }
     public required double OverlayOpacity { get; init; }
@@ -55,7 +59,7 @@ public static class TranslationRules
     public static AppSettings InitialSettings() => new()
     {
         SourceLanguage = "auto", TargetLanguage = "es", Provider = TranslationProvider.MyMemory,
-        Scope = CaptureScope.ActiveWindow, ScanIntervalMs = 750, OverlayFontSize = 16,
+        Scope = CaptureScope.ActiveWindow, Mode = TranslationMode.Live, ScanIntervalMs = 750, OverlayFontSize = 16,
         OverlayOpacity = 0.94, ReduceMotion = false, OllamaModel = "qwen3:4b", ColorSkin = ColorSkin.Copper
     };
 
@@ -66,8 +70,8 @@ public static class TranslationRules
     {
         if (settings.SourceLanguage != "auto") _ = Language(settings.SourceLanguage);
         _ = Language(settings.TargetLanguage);
-        if (!Enum.IsDefined(settings.Provider) || !Enum.IsDefined(settings.Scope))
-            throw new ArgumentException("Settings contain an unsupported translation service or capture scope.");
+        if (!Enum.IsDefined(settings.Provider) || !Enum.IsDefined(settings.Scope) || !Enum.IsDefined(settings.Mode))
+            throw new ArgumentException("Settings contain an unsupported translation service, capture scope or translation mode.");
         if (!Enum.IsDefined(settings.ColorSkin))
             throw new ArgumentException("Settings contain an unsupported color skin. Choose Copper, Paper or Plum.");
         if (settings.ScanIntervalMs is < 250 or > 5000)

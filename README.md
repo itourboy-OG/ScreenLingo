@@ -12,6 +12,10 @@
 
 Read a game's settings, navigate an unfamiliar menu, or translate another application without reaching for your phone. Choose your output language, switch to the window you want to read, and toggle the translation overlay with **Ctrl+Alt+T**.
 
+Live mode checks that a region contains actual text and stays still before translating it. Moving chat and scrolling tickers are skipped; open a stationary chat panel or freeze a menu in Screenshot mode to read it. Settings and About stay inside the main ScreenLingo window.
+
+For a menu that is difficult to read live, select **Screenshot translation** on the main panel or in Settings. **Ctrl+Alt+T** captures the current game once and opens a frozen image with a readable translation list. Use **Ctrl+mouse wheel** to zoom around your pointer, and **Ctrl+left-drag** to move the zoomed image. The zoom selector also offers **Fit image**, **100%**, **150%** and **200%**; wheel zoom spans 10%–800%. Turn off the image labels to inspect the original. The **Capture in 3 seconds** button gives you time to switch to the game. Close the reading window with Esc; Ctrl+Alt+Esc closes it and cancels any work in progress.
+
 **Early Windows preview.** Actual games and exclusive fullscreen still need live testing. See [compatibility and current limits](#compatibility-and-current-limits) before choosing a display mode.
 
 ## A look inside
@@ -23,6 +27,8 @@ Read a game's settings, navigate an unfamiliar menu, or translate another applic
     <td align="center"><img src="assets/settings.png" alt="ScreenLingo Settings showing appearance, translation service, capture scope and accessibility controls" width="300" /></td>
   </tr>
 </table>
+
+<p align="center"><img src="assets/screenshot-mode.png" alt="ScreenLingo screenshot mode with a frozen menu, zoom controls and a separate list of translated labels" width="850" /></p>
 
 <details>
 <summary><strong>Three skins: Copper, Paper and Plum</strong></summary>
@@ -61,7 +67,7 @@ For a first test, try an English game's settings menu with **English → Spanish
 
 | Shortcut | Action |
 | --- | --- |
-| **Ctrl+Alt+T** | Enable or pause translation |
+| **Ctrl+Alt+T** | Toggle live translation, or capture once in Screenshot mode |
 | **Ctrl+Alt+H** | Open the control window |
 | **Ctrl+Alt+Esc** | Pause translation |
 
@@ -73,11 +79,12 @@ Assign Ctrl+Alt+T to a **Stream Deck** hotkey button. Minimize the control windo
 | --- | --- |
 | Languages | Automatic or manual source selection; English, Spanish, Simplified Chinese, French, German, Italian, Japanese, Korean, Portuguese and Russian |
 | Capture | The active window, the window under your pointer, or the monitor under your pointer |
+| Reading modes | Live overlay, or a frozen screenshot with zoom and a readable translation list |
 | Translation | Online with MyMemory, or locally with a separately installed Ollama model |
 | Appearance | Copper, Paper and Plum skins; text size and background opacity |
 | Accessibility | Keyboard navigation, reduced motion, Windows high contrast and an overlay that lets clicks pass through |
 
-Text already in your output language skips the translation request while ScreenLingo continues watching for changes. Unchanged frames skip recognition, and previously translated labels are cached for the session. A refresh interval sets the scan schedule; recognition and translation can take longer than that interval.
+Text already in your output language skips the translation request. Live mode continues watching for changes; screenshot mode retains the captured image until you close it or capture again. Unchanged frames skip recognition, and previously translated labels are cached for the session. Live labels remain visible while the next scan is processed. A refresh interval sets the scan schedule; recognition and translation can take longer than that interval.
 
 ## Translation services and privacy
 
@@ -114,7 +121,7 @@ The preview installer is not code-signed. Windows may show an unknown-publisher 
 
 ## Compatibility and current limits
 
-- **Game compatibility is still being tested.** Capture and overlays were checked with test windows, including a borderless window. Call of Duty Mobile, GTA and other actual games still require live tests.
+- **Game compatibility is still being tested.** On a 3440×1440 Chinese Call of Duty Mobile PC lobby capture, the scene-text detector reduced 73 recognition candidates to 17 and removed the spurious labels across the scenery. On a settings capture, recognition retained 52 regions, including all 18 On/Off labels in nine toggle rows. These counts measure recognition candidates, not translation accuracy or complete coverage. Icons and very small text can still be misread. GTA and other games still require live tests.
 - **Exclusive fullscreen is unverified.** A separate desktop overlay may not appear over an exclusive fullscreen game. Protected content or game restrictions can block capture. ScreenLingo does not inject into games or bypass those restrictions.
 - **Recognition and translation can be imperfect.** Short labels, mixed languages and game-specific terms can be ambiguous. ScreenLingo translates visible text; it does not change the game's own language setting.
 - **Offline translation is unverified.** The connector is included, but its setup, speed and accuracy still need a real local-model test.
@@ -136,13 +143,17 @@ Use the **.NET 9 SDK on Windows**. The source includes the recognition models an
 dotnet restore ScreenLingo.csproj --locked-mode --configfile NuGet.Config
 dotnet build ScreenLingo.csproj --no-restore
 dotnet run --project ScreenLingo.csproj --no-build -- --smoke-test C:\path\to\test-output
-dotnet run --project ScreenLingo.csproj --no-build -- --install-check C:\path\to\install-test-output C:\path\to\ScreenLingo-0.3.2-Setup-x64.exe C:\path\to\previous-0.2.0-package
+dotnet run --project ScreenLingo.csproj --no-build -- --recognition-check C:\path\to\menu.png zh-CN C:\path\to\recognition-output
+dotnet run --project ScreenLingo.csproj --no-build -- --game-check <game-process-id> C:\path\to\game-test-output
+dotnet run --project ScreenLingo.csproj --no-build -- --install-check C:\path\to\install-test-output C:\path\to\ScreenLingo-0.4.1-Setup-x64.exe C:\path\to\previous-0.2.0-package
 dotnet run --project ScreenLingo.csproj --no-build -- --update-check C:\path\to\update-test-output
 .\Publish.ps1 -PackageDirectory C:\path\to\package
 pwsh -STA -File .\Build-Installer.ps1 -PackageDirectory C:\path\to\package -InstallerOutputDirectory C:\path\to\releases
 ```
 
 The smoke check creates synthetic menu windows, captures those windows, calls the real online service with synthetic menu text, and writes screenshots plus `smoke-report.json`. It never sends your desktop contents to a translation service.
+
+The recognition check measures an explicitly supplied image locally. The game check captures only the window belonging to the process ID you provide, saves its image and results in the report directory, and uses the configured test service (online MyMemory) to translate that window's recognized text. It does not depend on keeping the game focused.
 
 `Publish.ps1` builds the self-contained Windows package, runs the appearance check and refreshes `Desktop\ScreenLingo\ScreenLingo.exe` after the check passes. Close the Desktop copy first. The appearance check uses the actual preferences form, verifies theme persistence and renders each skin without network requests. Results are saved in `screen-lingo-appearance-check` beside the package directory.
 

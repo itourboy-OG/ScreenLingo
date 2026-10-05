@@ -214,6 +214,8 @@ public sealed class SettingsConnector
             ?? throw new JsonException($"Settings file must contain an object: {path}.");
         // Version 0.1 preferences predate skins; migrate that schema without discarding existing choices.
         if (!preferences.ContainsKey(nameof(AppSettings.ColorSkin))) preferences.Add(nameof(AppSettings.ColorSkin), nameof(ColorSkin.Copper));
+        // Earlier releases offered only live translation; preserve that behavior when adding screenshot mode.
+        if (!preferences.ContainsKey(nameof(AppSettings.Mode))) preferences.Add(nameof(AppSettings.Mode), nameof(TranslationMode.Live));
         return TranslationRules.ValidateSettings(preferences.Deserialize<AppSettings>()
             ?? throw new JsonException($"Settings file contains null: {path}. Remove this file to reset preferences."));
     }

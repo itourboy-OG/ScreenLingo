@@ -57,6 +57,7 @@ public partial class MainWindow : Window
         TargetLanguage.ItemsSource = TranslationRules.Languages();
         SourceLanguage.SelectedValue = settings.SourceLanguage;
         TargetLanguage.SelectedValue = settings.TargetLanguage;
+        Mode.SelectedValue = settings.Mode.ToString();
         initialized = true;
         UpdateServiceCaption();
         InitializeUpdates();
@@ -76,6 +77,7 @@ public partial class MainWindow : Window
             ContextMenuStrip = menu, Visible = true
         };
         tray.DoubleClick += (_, _) => Dispatcher.Invoke(ShowPanel);
+        UpdateModeControls();
         SourceInitialized += (_, _) =>
         {
             nint window = new WindowInteropHelper(this).Handle;
@@ -103,10 +105,15 @@ public partial class MainWindow : Window
     }
 
     private void ShowPanel() { Show(); WindowState = WindowState.Normal; Activate(); }
-    private void ToggleClicked(object sender, RoutedEventArgs args) => Toggle();
+    private void ToggleClicked(object sender, RoutedEventArgs args)
+    {
+        if (settings.Mode == TranslationMode.Screenshot) CaptureAfterCountdown();
+        else Toggle();
+    }
 
     private void Toggle()
     {
+        if (settings.Mode == TranslationMode.Screenshot) { CaptureScreenshot(); return; }
         if (enabled) { Pause(); return; }
         enabled = true;
         ToggleTranslation.Content = "Pause translation";
@@ -119,9 +126,11 @@ public partial class MainWindow : Window
     {
         enabled = false;
         InvalidateCapture();
-        ToggleTranslation.Content = "Enable translation";
+        CloseScreenshot();
+        UpdateModeControls();
         tray.Text = "ScreenLingo · translation off";
-        SetStatus("Translation paused", "Your shortcut can enable it again whenever you need it.");
+        if (settings.Mode == TranslationMode.Live)
+            SetStatus("Translation paused", "Your shortcut can enable it again whenever you need it.");
     }
 
     private CaptureTarget? ReadTarget() => settings.Scope switch
@@ -168,45 +177,33 @@ public partial class MainWindow : Window
             CapturedImage image = await capture.SnapshotAsync(token);
             byte[] hash = SHA256.HashData(image.Png);
             if (hash.AsSpan().SequenceEqual(lastImageHash)) return;
-            overlay.Hide();
-            ImmutableArray<TextRegion> regions = await Task.Run(() => ocr.Recognize(image, snapshot.SourceLanguage), token);
-            token.ThrowIfCancellationRequested();
-            if (regions.IsEmpty)
+            Action<string> progress = detail => SetStatus("Translating", target.Title + " · " + detail);
+            (string source, ImmutableArray<TextRegion> regions) = await RecognizeImageAsync(image, snapshot, token, progress);
+            CapturedImage latest = await capture.SnapshotAsync(token);
+            ImmutableArray<TextRegion> stationary = await Task.Run(() => TextStability.StationaryRegions(image, latest, regions), token);
+            overlay.RetainStationary(stationary);
+            ScreenTranslation result = await TranslateRegionsAsync(source, stationary, snapshot, token, progress);
+            if (generation != startedGeneration || ReadTarget() != target) return;
+            CapturedImage presentImage = await capture.SnapshotAsync(token);
+            ImmutableArray<TextRegion> stillVisible = await Task.Run(() => TextStability.StationaryRegions(image, presentImage, stationary), token);
+            result = result with { Regions = result.Regions.Where(region => stillVisible.Contains(region.Source)).ToImmutableArray() };
+            if (result.RecognizedCount == 0)
             {
+                overlay.Hide();
                 lastImageHash = hash;
                 SetStatus("No readable text", $"{target.Title} · watching for changes");
                 return;
             }
-            string source = snapshot.SourceLanguage == "auto" ? await Task.Run(() => ocr.DetectLanguage(regions), token) : snapshot.SourceLanguage;
-            if (snapshot.SourceLanguage == "auto" && source is "zh-CN" or "ja" or "ko")
-                regions = await Task.Run(() => ocr.Recognize(image, source), token);
-            token.ThrowIfCancellationRequested();
-            if (!TranslationRules.NeedsTranslation(source, snapshot.TargetLanguage))
+            if (!TranslationRules.NeedsTranslation(result.SourceLanguage, snapshot.TargetLanguage))
             {
+                overlay.Hide();
                 lastImageHash = hash;
-                SetStatus("Already in your language", $"{target.Title} · {TranslationRules.Language(source).Name} · watching for changes");
+                SetStatus("Already in your language", $"{target.Title} · {TranslationRules.Language(result.SourceLanguage).Name} · watching for changes");
                 return;
             }
-            string provider = snapshot.Provider == TranslationProvider.Ollama ? "Ollama:" + snapshot.OllamaModel : "MyMemory";
-            ImmutableArray<TranslationKey> keys = regions.Select(region => new TranslationKey(provider, source, snapshot.TargetLanguage, region.Text)).ToImmutableArray();
-            ImmutableArray<TranslationKey> missing = keys.Distinct().Where(key => !cache.ContainsKey(key)).ToImmutableArray();
-            if (!missing.IsEmpty)
-            {
-                SetStatus("Translating", $"{target.Title} · {TranslationRules.Language(source).Name} → {TranslationRules.Language(snapshot.TargetLanguage).Name}");
-                ITranslator translator = snapshot.Provider == TranslationProvider.MyMemory
-                    ? new MyMemoryConnector(onlineHttp) : new OllamaConnector(offlineHttp, snapshot.OllamaModel);
-                ImmutableArray<string> translated = await translator.TranslateAsync(missing.Select(key => key.Text).ToImmutableArray(), source, snapshot.TargetLanguage, token);
-                token.ThrowIfCancellationRequested();
-                cache = TranslationRules.MergeCache(cache, missing, translated);
-            }
-            if (generation != startedGeneration || ReadTarget() != target) return;
-            ImmutableArray<TranslatedRegion> labels = regions.Select((region, index) => new TranslatedRegion(region, cache[keys[index]]))
-                .Where(region => !string.Equals(region.Source.Text, region.Translation, StringComparison.OrdinalIgnoreCase)).ToImmutableArray();
-            overlay.Present(target, image, labels, snapshot);
-            // ponytail: keep 512 session labels; add LRU only if real game sessions exhaust this cache.
-            cache = cache.Take(512).ToImmutableDictionary();
+            overlay.Present(target, image, result.Regions, snapshot);
             lastImageHash = hash;
-            SetStatus("Translation is on", $"{target.Title} · {labels.Length} labels · {stopwatch.Elapsed.TotalSeconds:0.0}s");
+            SetStatus("Translation is on", $"{target.Title} · {result.Regions.Length} / {result.RecognizedCount} labels translated · {stopwatch.Elapsed.TotalSeconds:0.0}s");
         }
         catch (OperationCanceledException) when (token.IsCancellationRequested) { /* Window changes and the toggle explicitly cancel stale work. */ }
         catch (Exception error) when (error is HttpRequestException or JsonException or TimeoutException or COMException or InvalidOperationException or IOException)
@@ -230,28 +227,54 @@ public partial class MainWindow : Window
         settings = settings with { SourceLanguage = (string)SourceLanguage.SelectedValue, TargetLanguage = (string)TargetLanguage.SelectedValue };
         store.Save(settings);
         InvalidateCapture();
+        CloseScreenshot();
     }
 
     private void SettingsClicked(object sender, RoutedEventArgs args)
     {
-        SettingsWindow dialog = new(settings, CheckForUpdatesAsync) { Owner = this };
-        if (dialog.ShowDialog() != true || dialog.Result is not AppSettings updated) return;
+        SettingsView view = new(settings, CheckForUpdatesAsync);
+        view.Saved += SavePreferences;
+        view.Cancelled += ShowHome;
+        HomeView.Visibility = Visibility.Collapsed;
+        DetailView.Content = view;
+        DetailView.Visibility = Visibility.Visible;
+    }
+
+    private void SavePreferences(AppSettings updated)
+    {
         settings = updated;
         store.Save(settings);
         scanTimer.Interval = TimeSpan.FromMilliseconds(settings.ScanIntervalMs);
         ThemeConnector.Apply(settings.ColorSkin);
+        Mode.SelectedValue = settings.Mode.ToString();
         currentTarget = null;
         InvalidateCapture();
+        CloseScreenshot();
+        UpdateModeControls();
         UpdateServiceCaption();
+        ShowHome();
     }
+
+    internal void ShowHome()
+    {
+        DetailView.Content = null;
+        DetailView.Visibility = Visibility.Collapsed;
+        AboutView.Visibility = Visibility.Collapsed;
+        HomeView.Visibility = Visibility.Visible;
+    }
+
+    private void BackClicked(object sender, RoutedEventArgs args) => ShowHome();
 
     private void UpdateServiceCaption() => ServiceCaption.Text = settings.Provider == TranslationProvider.MyMemory
         ? "Online · recognized text goes to MyMemory\nFree daily limit applies. Screenshots stay local."
         : "Offline · local Ollama model\nText and screenshots stay on your PC.";
 
-    private void AboutClicked(object sender, RoutedEventArgs args) => MessageBox.Show(this,
-        ApplicationIdentity.Name + " " + ApplicationIdentity.Version + " · local preview\n\nTranslate games and applications with Ctrl+Alt+T.\nCtrl+Alt+H opens the panel. Ctrl+Alt+Esc pauses.\nMinimize to keep the app in the system tray.\n\nAutomatic source detection uses the visible text. Short labels can be ambiguous; select a source language manually when needed.\n\nWindowed and borderless games are initial test targets. Exclusive full-screen visibility depends on the game and must be tested. Protected content can block capture.",
-        "About ScreenLingo", MessageBoxButton.OK, MessageBoxImage.Information);
+    private void AboutClicked(object sender, RoutedEventArgs args)
+    {
+        HomeView.Visibility = Visibility.Collapsed;
+        AboutVersion.Text = ApplicationIdentity.Name + " " + ApplicationIdentity.Version + " · preview";
+        AboutView.Visibility = Visibility.Visible;
+    }
 
     private void SetStatus(string title, string detail) { StatusTitle.Text = title; StatusDetail.Text = detail; }
 
@@ -266,6 +289,7 @@ public partial class MainWindow : Window
         updateCancellation.Cancel();
         cancellation?.Cancel();
         overlay.Close();
+        CloseScreenshot();
         tray.Dispose();
         nint window = new WindowInteropHelper(this).Handle;
         foreach (int shortcut in shortcuts) WindowsConnector.RemoveShortcut(window, shortcut);
