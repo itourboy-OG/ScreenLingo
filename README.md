@@ -45,7 +45,7 @@ Choose a look in **Settings → Appearance**. The controls and translation label
 <details>
 <summary><strong>A branded Windows installer</strong></summary>
 
-![ScreenLingo Setup welcome screen with the app icon, name and a preview of the application](assets/setup.png)
+<p align="center"><img src="assets/installer-welcome.png" alt="ScreenLingo installer artwork with the matching translation icon and ScreenLingo name" width="230" /></p>
 
 </details>
 
@@ -136,7 +136,7 @@ Use the **.NET 9 SDK on Windows**. The source includes the recognition models an
 dotnet restore ScreenLingo.csproj --locked-mode --configfile NuGet.Config
 dotnet build ScreenLingo.csproj --no-restore
 dotnet run --project ScreenLingo.csproj --no-build -- --smoke-test C:\path\to\test-output
-dotnet run --project ScreenLingo.csproj --no-build -- --install-check C:\path\to\install-test-output C:\path\to\ScreenLingo-0.3.0-Setup-x64.exe C:\path\to\previous-0.2.0-package
+dotnet run --project ScreenLingo.csproj --no-build -- --install-check C:\path\to\install-test-output C:\path\to\ScreenLingo-0.3.2-Setup-x64.exe C:\path\to\previous-0.2.0-package
 dotnet run --project ScreenLingo.csproj --no-build -- --update-check C:\path\to\update-test-output
 .\Publish.ps1 -PackageDirectory C:\path\to\package
 pwsh -STA -File .\Build-Installer.ps1 -PackageDirectory C:\path\to\package -InstallerOutputDirectory C:\path\to\releases

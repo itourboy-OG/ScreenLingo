@@ -6,27 +6,16 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName PresentationCore,WindowsBase
-[xml]$applicationMarkup = Get-Content -LiteralPath (Join-Path $SourceDirectory 'App.xaml') -Raw
-$geometryNode = $applicationMarkup.SelectSingleNode("//*[local-name()='Geometry']")
-if ($null -eq $geometryNode) { throw 'The application has no BrandMark geometry.' }
-$geometry = [Windows.Media.Geometry]::Parse($geometryNode.InnerText)
-$background = [Windows.Media.SolidColorBrush]::new([Windows.Media.ColorConverter]::ConvertFromString('#F2AF78'))
-$ink = [Windows.Media.SolidColorBrush]::new([Windows.Media.ColorConverter]::ConvertFromString('#302116'))
+$brandPath = Join-Path $SourceDirectory 'assets\brand-icon.png'
+if (-not (Test-Path -LiteralPath $brandPath -PathType Leaf)) { throw "The ScreenLingo brand icon is missing: $brandPath." }
+$brand = [Windows.Media.Imaging.BitmapImage]::new([Uri]::new($brandPath))
 $images = [Collections.Generic.List[byte[]]]::new()
 $sizes = @(16,32,48,64,128,256)
 foreach ($size in $sizes) {
     $visual = [Windows.Media.DrawingVisual]::new()
     $drawing = $visual.RenderOpen()
-    $drawing.DrawRoundedRectangle($background, $null, [Windows.Rect]::new(0,0,$size,$size), $size*0.24, $size*0.24)
-    $drawing.PushTransform([Windows.Media.TranslateTransform]::new($size*0.16,$size*0.13))
-    $drawing.PushTransform([Windows.Media.ScaleTransform]::new($size*0.68/32,$size*0.68/32))
-    $pen = [Windows.Media.Pen]::new($ink,1.8)
-    $pen.StartLineCap = [Windows.Media.PenLineCap]::Round
-    $pen.EndLineCap = [Windows.Media.PenLineCap]::Round
-    $pen.LineJoin = [Windows.Media.PenLineJoin]::Round
-    $drawing.DrawGeometry($null,$pen,$geometry)
-    $drawing.Pop()
-    $drawing.Pop()
+    [Windows.Media.RenderOptions]::SetBitmapScalingMode($visual,[Windows.Media.BitmapScalingMode]::HighQuality)
+    $drawing.DrawImage($brand,[Windows.Rect]::new(0,0,$size,$size))
     $drawing.Close()
     $bitmap = [Windows.Media.Imaging.RenderTargetBitmap]::new($size,$size,96,96,[Windows.Media.PixelFormats]::Pbgra32)
     $bitmap.Render($visual)
@@ -59,3 +48,4 @@ try {
     foreach ($imageBytes in $images) { $writer.Write($imageBytes) }
 } finally { $writer.Dispose() }
 [IO.File]::WriteAllBytes($LogoPath,$images[$images.Count-1])
+[IO.File]::WriteAllBytes((Join-Path $SourceDirectory 'assets\logo.png'),$images[$images.Count-1])

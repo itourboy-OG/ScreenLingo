@@ -60,34 +60,9 @@ if (-not (Test-Path -LiteralPath $compilerExe -PathType Leaf)) {
 $runtimePath = Join-Path $toolsPath 'vc_redist.x64.exe'
 Get-VerifiedBuildDownload -Uri 'https://download.visualstudio.microsoft.com/download/pr/bd1c8d9d-ba95-4eee-bc6e-df1fcc876373/CC0FF0EB1DC3F5188AE6300FAEF32BF5BEEBA4BDD6E8E445A9184072096B713B/VC_redist.x64.exe' -Destination $runtimePath -Sha256 'CC0FF0EB1DC3F5188AE6300FAEF32BF5BEEBA4BDD6E8E445A9184072096B713B' -Publisher 'Microsoft Corporation'
 
-# Compose the installer panel from the existing native logo and an actual app screenshot.
-Add-Type -AssemblyName PresentationCore,WindowsBase
-$visual = [Windows.Media.DrawingVisual]::new()
-$drawing = $visual.RenderOpen()
-$background = [Windows.Media.SolidColorBrush]::new([Windows.Media.ColorConverter]::ConvertFromString('#211E1A'))
-$ink = [Windows.Media.SolidColorBrush]::new([Windows.Media.ColorConverter]::ConvertFromString('#FFF4E9'))
-$caption = [Windows.Media.SolidColorBrush]::new([Windows.Media.ColorConverter]::ConvertFromString('#D7C4B3'))
-$drawing.DrawRectangle($background, $null, [Windows.Rect]::new(0,0,492,942))
-$logo = [Windows.Media.Imaging.BitmapImage]::new([Uri]::new((Join-Path $sourcePath 'assets\logo.png')))
-$screenshotPath = Join-Path ([IO.Path]::GetDirectoryName($packagePath)) 'screen-lingo-appearance-check\copper-preview.png'
-if (-not (Test-Path -LiteralPath $screenshotPath -PathType Leaf)) { throw "The current appearance-check screenshot is missing: $screenshotPath." }
-$screenshot = [Windows.Media.Imaging.BitmapImage]::new([Uri]::new($screenshotPath))
-$drawing.DrawImage($logo, [Windows.Rect]::new(48,52,76,76))
-$title = [Windows.Media.FormattedText]::new('ScreenLingo',[Globalization.CultureInfo]::InvariantCulture,[Windows.FlowDirection]::LeftToRight,[Windows.Media.Typeface]::new('Segoe UI Semibold'),34,$ink,1)
-$drawing.DrawText($title,[Windows.Point]::new(48,147))
-$tagline = [Windows.Media.FormattedText]::new("Understand what's on screen.",[Globalization.CultureInfo]::InvariantCulture,[Windows.FlowDirection]::LeftToRight,[Windows.Media.Typeface]::new('Segoe UI'),20,$caption,1)
-$drawing.DrawText($tagline,[Windows.Point]::new(48,193))
-$drawing.DrawImage($screenshot,[Windows.Rect]::new(48,258,396,611))
-$footer = [Windows.Media.FormattedText]::new(('Windows x64  ·  ' + $version),[Globalization.CultureInfo]::InvariantCulture,[Windows.FlowDirection]::LeftToRight,[Windows.Media.Typeface]::new('Segoe UI'),17,$caption,1)
-$drawing.DrawText($footer,[Windows.Point]::new(48,892))
-$drawing.Close()
-$bitmap = [Windows.Media.Imaging.RenderTargetBitmap]::new(492,942,96,96,[Windows.Media.PixelFormats]::Pbgra32)
-$bitmap.Render($visual)
-$encoder = [Windows.Media.Imaging.PngBitmapEncoder]::new()
-$encoder.Frames.Add([Windows.Media.Imaging.BitmapFrame]::Create($bitmap))
 $imagePath = Join-Path $sourcePath 'assets\installer-welcome.png'
-$imageStream = [IO.File]::Create($imagePath)
-try { $encoder.Save($imageStream) } finally { $imageStream.Dispose() }
+if (-not (Test-Path -LiteralPath $imagePath -PathType Leaf)) { throw "The ScreenLingo installer artwork is missing: $imagePath." }
+Copy-Item -LiteralPath $imagePath -Destination (Join-Path $packagePath 'assets\installer-welcome.png') -Force
 New-Item -ItemType Directory -Path $outputPath -Force | Out-Null
 & $compilerExe /Q ('/DPackageDirectory=' + $packagePath) ('/DInstallerOutputDirectory=' + $outputPath) ('/DRuntimePath=' + $runtimePath) (Join-Path $sourcePath 'installer\ScreenLingo.iss')
 if ($LASTEXITCODE -ne 0) { throw "ScreenLingo installer compilation failed: exit code=$LASTEXITCODE." }

@@ -9,7 +9,7 @@
         </Grid>
       </ControlTemplate></Setter.Value></Setter>
     </Style>
-    <Geometry x:Key="BrandMark">M 4,3 H 19 Q 22,3 22,6 V 12 H 19 V 7 H 5 V 19 H 10 L 10,23 L 14,19 H 17 M 18,13 H 26 Q 29,13 29,16 V 24 Q 29,27 26,27 H 23 L 19,31 V 27 H 17 Q 14,27 14,24 V 16 Q 14,13 18,13 M 8,11 H 16 M 8,15 H 12 M 19,19 H 25 M 22,16 V 22</Geometry>
+    <BitmapImage x:Key="BrandLogo" UriSource="pack://application:,,,/assets/logo.png" />
     <Style TargetType="Window"><Setter Property="Background" Value="{DynamicResource Backdrop}" />
       <Setter Property="Foreground" Value="{DynamicResource Ink}" /><Setter Property="FontFamily" Value="Segoe UI" />
       <Setter Property="FontSize" Value="14" /><Setter Property="UseLayoutRounding" Value="True" /></Style>
